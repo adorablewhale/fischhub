@@ -1,0 +1,2 @@
+# keep Windows line endings so the raw download runs in cmd
+*.bat -text

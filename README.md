@@ -43,3 +43,17 @@ Running it again replaces the running copy, so reinjecting is safe.
 - **Settings:** unload the script, and change the theme and other UI options (gear tab).
 
 Your settings save by themselves to Matcha's `workspace/FischHub` folder.
+
+## Webhook: one message that updates
+
+By default the webhook keeps editing **one** Discord message instead of posting a new one every update.
+
+- **Setup:** download [`webhook-relay.bat`](webhook-relay.bat) from this repo, double-click it, and leave its window open while you farm.
+- **Why it's needed:** Discord only edits messages with a PATCH request, and Matcha can't send one. The relay turns the script's request into that PATCH.
+- **Safety:** it only listens on your own PC (127.0.0.1), and only forwards Discord webhook edits.
+- **Without it:** every update posts a new message, like before.
+- **Checking it:** in the Webhook tab, **Check relay** shows whether it's running, and **Start a new message** begins a fresh one.
+
+## If Roblox or Fisch updates
+
+Instant Catch reads a few memory positions that can move after an update. The script checks them every time it loads and on every reel, fixes any that moved, and saves them to `workspace/FischHub/offsets.json`. You don't need to do anything. The Debug tab shows the status, and **Recheck offsets** forces a new check.
