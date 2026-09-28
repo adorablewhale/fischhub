@@ -56,4 +56,4 @@ By default the webhook keeps editing **one** Discord message instead of posting 
 
 ## If Roblox or Fisch updates
 
-Instant Catch reads a few memory positions that can move after an update. The script checks them every time it loads and on every reel, fixes any that moved, and saves them to `workspace/FischHub/offsets.json`. You don't need to do anything. The Debug tab shows the status, and **Recheck offsets** forces a new check.
+Instant Catch reads a few memory positions that can move after an update. They're saved in `workspace/FischHub/offsets.json` with the Roblox version they were checked on. After a Roblox update, the script checks them once, fixes any that moved, and saves them again. You don't need to do anything. The Debug tab shows the status, and **Recheck offsets** forces a new check.
