@@ -71,8 +71,10 @@ without clicking, so a long session can look idle. **Anti-AFK** (Settings tab, o
 Download [`fischhub-helper.bat`](fischhub-helper.bat) from this repo (open it, press **Raw**, then save).
 Double-click it and leave its window open while you play. It only listens on your own PC (127.0.0.1).
 
-- **Dashboard:** your browser opens `http://127.0.0.1:47210` with live stats, charts, every fish you
-  caught (including past sessions), rarity and mutation breakdowns, and the script's log.
+- **Dashboard:** your browser opens `http://127.0.0.1:47210`. It shows fish this session and per hour
+  with a live chart, C$/XP gained, the fish on the line, and your rarest and heaviest catch. It also
+  has a filterable list of every fish (size, rarity, mutation, weight, odds), rarity and mutation
+  breakdowns, and all-time stats from every session. Dark and light themes.
 - **Webhook edits:** keeps updating one Discord message instead of posting a new one each time.
 - **Screenshots:** with **Screenshot in webhook** on (Webhook tab), each message gets a picture of your
   Roblox window. It only ever captures Roblox.

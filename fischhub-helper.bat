@@ -154,260 +154,838 @@ $script:ShotNote = if ($script:CanShot) { 'ready (turn on "Screenshot in webhook
 
 $Html = @'
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>FischHub Dashboard</title>
+<title>FischHub</title>
 <style>
 :root {
-  --bg: #0e1116; --panel: #161b22; --line: #262d36; --text: #e6e8eb; --dim: #8b949e;
-  --accent: #7aa2ff; --good: #3fb950; --warn: #d29922; --bad: #f85149; --bar: #2f81f7;
+  color-scheme: dark;
+  --page: #0d0d0d; --surface: #1a1a19; --raised: #242423; --ink: #ffffff; --ink2: #c3c2b7; --muted: #898781;
+  --grid: #2c2c2a; --base: #383835; --border: rgba(255,255,255,.10); --s1: #3987e5; --s2: #d95926;
+  --good: #0ca30c; --warn: #fab219; --serious: #ec835a; --crit: #d03b3b;
+  --shadow: 0 8px 28px rgba(0,0,0,.45);
 }
-@media (prefers-color-scheme: light) {
-  :root { --bg: #f5f6f8; --panel: #ffffff; --line: #d8dde3; --text: #1b1f24; --dim: #5b6570;
-    --accent: #3558d6; --good: #1a7f37; --warn: #9a6700; --bad: #cf222e; --bar: #3558d6; }
+:root[data-theme="light"] {
+  color-scheme: light;
+  --page: #f9f9f7; --surface: #fcfcfb; --raised: #f0efea; --ink: #0b0b0b; --ink2: #52514e; --muted: #6f6e69;
+  --grid: #e1e0d9; --base: #c3c2b7; --border: rgba(11,11,11,.10); --s1: #2a78d6; --s2: #eb6834;
+  --shadow: 0 8px 28px rgba(11,11,11,.12);
 }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
-header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 14px 20px; border-bottom: 1px solid var(--line); }
-header h1 { margin: 0; font-size: 18px; }
-.pill { padding: 2px 10px; border-radius: 999px; font-size: 12px; border: 1px solid var(--line); color: var(--dim); }
-.pill.live { color: var(--good); border-color: var(--good); }
-.pill.stale { color: var(--warn); border-color: var(--warn); }
-.pill.dead { color: var(--bad); border-color: var(--bad); }
-#phase { color: var(--dim); flex: 1 1 260px; }
-main { padding: 16px 20px 40px; display: grid; gap: 16px; grid-template-columns: repeat(12, 1fr); max-width: 1500px; margin: 0 auto; }
-.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; min-width: 0; }
-.card h2 { margin: 0 0 10px; font-size: 13px; font-weight: 600; color: var(--dim); text-transform: uppercase; letter-spacing: .04em; }
-.span3 { grid-column: span 3; } .span4 { grid-column: span 4; } .span5 { grid-column: span 5; }
-.span6 { grid-column: span 6; } .span7 { grid-column: span 7; } .span8 { grid-column: span 8; } .span12 { grid-column: span 12; }
-@media (max-width: 1100px) { .span3, .span4, .span5 { grid-column: span 6; } .span6, .span7, .span8 { grid-column: span 12; } }
-@media (max-width: 640px) { main { padding: 12px 16px 32px; } .span3, .span4, .span5, .span6 { grid-column: span 12; } }
-.kpis { grid-column: span 12; display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
-.kpi .v { font-size: 26px; font-weight: 650; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.kpi .s { color: var(--dim); font-size: 12px; }
+html { scroll-padding-top: 76px; }
+body { margin: 0; background: var(--page); color: var(--ink);
+  font: 14px/1.5 "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+button { font: inherit; color: inherit; }
+
+/* header */
+.top { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--page) 86%, transparent);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); }
+.bar { max-width: 1440px; margin: 0 auto; padding: 10px 24px; display: flex; align-items: center; gap: 10px 18px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 16px; letter-spacing: -.01em; }
+.logo { width: 28px; height: 28px; border-radius: 8px; background: var(--s1); display: grid; place-items: center; flex: none; }
+.logo svg { width: 18px; height: 18px; }
+.who { color: var(--muted); font-size: 13px; font-weight: 400; }
+.live { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; padding: 3px 11px 3px 9px; border: 1px solid var(--border);
+  border-radius: 999px; color: var(--ink2); white-space: nowrap; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+.live[data-s="live"] .dot { background: var(--good); box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 28%, transparent); }
+.live[data-s="stale"] .dot { background: var(--warn); }
+.live[data-s="dead"] .dot { background: var(--crit); }
+.phase { color: var(--ink2); font-size: 13px; flex: 1 1 180px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+nav { display: flex; gap: 2px; align-items: center; }
+nav a, .iconbtn { color: var(--ink2); text-decoration: none; font-size: 13px; padding: 5px 10px; border-radius: 8px; border: 0; background: none; cursor: pointer; }
+nav a:hover, .iconbtn:hover { background: var(--raised); color: var(--ink); }
+.iconbtn { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; }
+.iconbtn svg { width: 17px; height: 17px; }
+
+/* layout */
+main { max-width: 1440px; margin: 0 auto; padding: 20px 24px 56px; }
+.block { margin-bottom: 36px; }
+.sechead { display: flex; align-items: baseline; justify-content: space-between; gap: 6px 16px; flex-wrap: wrap; margin: 0 0 12px; }
+.sechead h2 { font-size: 17px; margin: 0; font-weight: 650; letter-spacing: -.01em; }
+.sechead .sub { color: var(--muted); font-size: 12px; }
+.grid { display: grid; gap: 16px; grid-template-columns: repeat(12, minmax(0, 1fr)); }
+.c12 { grid-column: span 12; } .c8 { grid-column: span 8; } .c6 { grid-column: span 6; } .c4 { grid-column: span 4; }
+.stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+@media (max-width: 1100px) { .c8, .c4 { grid-column: span 12; } .stack.c4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); } }
+@media (max-width: 860px) { .c6 { grid-column: span 12; } }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; min-width: 0; }
+.card h3 { margin: 0 0 12px; font-size: 13px; font-weight: 600; color: var(--ink); display: flex; justify-content: space-between;
+  align-items: baseline; gap: 4px 10px; flex-wrap: wrap; }
+.card h3 .aside { font-weight: 400; color: var(--muted); font-size: 12px; }
+
+/* banner */
+.banner { display: none; margin-bottom: 16px; border-radius: 12px; padding: 12px 16px; border: 1px solid var(--border); background: var(--surface);
+  gap: 12px; align-items: flex-start; }
+.banner.on { display: flex; }
+.banner .ic { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 13px; color: #fff; flex: none; background: var(--muted); }
+.banner.crit { border-color: color-mix(in srgb, var(--crit) 55%, transparent); }
+.banner.crit .ic { background: var(--crit); }
+.banner.warn .ic { background: var(--warn); color: #0b0b0b; }
+.banner b { display: block; }
+.banner .d { color: var(--ink2); font-size: 13px; overflow-wrap: anywhere; }
+
+/* hero */
+.hero { display: grid; grid-template-columns: minmax(230px, 300px) minmax(0, 1fr); gap: 8px 28px; padding: 20px 22px; }
+.eyebrow { color: var(--ink2); font-size: 13px; font-weight: 600; }
+.big { font-size: 64px; line-height: 1.05; font-weight: 700; letter-spacing: -.035em; margin: 6px 0 14px; }
+.kv { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-top: 1px solid var(--grid); font-size: 13px; }
+.kv span { color: var(--ink2); }
+.kv b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.hero .chart { height: 236px; }
+@media (max-width: 760px) { .hero { grid-template-columns: minmax(0, 1fr); } .big { font-size: 52px; } .hero .chart { height: 200px; } }
+
+/* tiles */
+.tiles { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); margin: 16px 0; }
+.tile .k { color: var(--ink2); font-size: 13px; font-weight: 600; }
+.tile .v { font-size: 26px; font-weight: 650; letter-spacing: -.02em; margin: 4px 0 2px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.tile .f { color: var(--muted); font-size: 12px; }
+
+/* highlight cards */
+.hls { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); margin-bottom: 16px; }
+.hl .k { color: var(--ink2); font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.hl .v { font-size: 22px; font-weight: 650; letter-spacing: -.015em; margin: 6px 0 4px; overflow-wrap: anywhere; }
+.hl .s { color: var(--ink2); font-size: 13px; overflow-wrap: anywhere; }
+.pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--s1); animation: pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) { .pulse { animation: none; } }
+
+/* charts */
+.chart { position: relative; height: 210px; touch-action: pan-y; }
+.chart svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.chart .ax { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.chart .gl { stroke: var(--grid); stroke-width: 1; }
+.chart .bl { stroke: var(--base); stroke-width: 1; }
+.chart .cross { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
+.chart-empty { height: 100%; display: grid; place-items: center; color: var(--muted); font-size: 13px; text-align: center; padding: 0 12px;
+  border: 1px dashed var(--grid); border-radius: 10px; }
+details.twin { margin-top: 8px; }
+details.twin summary, details.logbox summary { cursor: pointer; color: var(--muted); font-size: 12px; width: max-content; }
+details.twin summary:hover, details.logbox summary:hover { color: var(--ink); }
+.twin .wrap { max-height: 240px; overflow: auto; margin-top: 8px; }
+
+/* tooltip */
+.tip { position: fixed; z-index: 50; pointer-events: none; background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  box-shadow: var(--shadow); padding: 8px 10px; font-size: 12px; min-width: 120px; max-width: 280px; display: none; }
+.tip .t { color: var(--muted); margin-bottom: 4px; }
+.tip .r { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+.tip .r span { display: flex; align-items: center; gap: 6px; color: var(--ink2); overflow-wrap: anywhere; }
+.tip .r b { font-variant-numeric: tabular-nums; }
+.sw { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+
+/* tables */
+.tablewrap { overflow-x: auto; }
+.tablewrap.scroll { max-height: 640px; overflow: auto; }
+.tablecard { display: flex; flex-direction: column; }
+.tablecard .tablewrap.scroll { flex: 1 1 auto; min-height: 420px; max-height: none; contain: size; }
+@media (max-width: 1100px) { .tablecard .tablewrap.scroll { contain: none; min-height: 0; max-height: 600px; } }
+.tablewrap.scroll thead th { position: sticky; top: 0; background: var(--surface); z-index: 1; }
+.charthead { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
 table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-th, td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
-th { color: var(--dim); font-weight: 500; font-size: 12px; }
-td.name { white-space: normal; }
-.scroll { max-height: 420px; overflow: auto; }
-.tag { display: inline-block; padding: 0 7px; border-radius: 6px; font-size: 11px; font-weight: 600; color: #fff; }
-.mut { color: var(--warn); }
-.dim { color: var(--dim); }
-.row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
-.row .lbl { flex: 0 0 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.row .track { flex: 1; height: 10px; background: var(--line); border-radius: 5px; overflow: hidden; }
-.row .fill { height: 100%; border-radius: 5px; }
-.row .n { flex: 0 0 56px; text-align: right; font-variant-numeric: tabular-nums; }
-dl { display: grid; grid-template-columns: 130px 1fr; gap: 4px 10px; margin: 0; }
-dt { color: var(--dim); } dd { margin: 0; overflow-wrap: anywhere; white-space: pre-line; }
-pre { margin: 0; font: 12px/1.45 ui-monospace, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 360px; overflow: auto; }
-canvas { width: 100%; height: 180px; display: block; }
-.reel { display: none; margin-left: auto; padding: 4px 12px; border-radius: 8px; background: var(--panel); border: 1px solid var(--accent); }
-label.sw { display: inline-flex; gap: 8px; align-items: center; cursor: pointer; margin-top: 8px; }
-.empty { color: var(--dim); padding: 8px 0; }
-.banner { grid-column: span 12; display: none; border-radius: 10px; padding: 12px 16px; border: 1px solid var(--bad); background: color-mix(in srgb, var(--bad) 14%, var(--panel)); }
-.banner b { color: var(--bad); }
+th { text-align: left; font-weight: 500; font-size: 12px; color: var(--muted); padding: 0 10px 8px 0; border-bottom: 1px solid var(--base); white-space: nowrap; }
+td { padding: 7px 10px 7px 0; border-bottom: 1px solid var(--grid); vertical-align: middle; white-space: nowrap; }
+tbody tr:hover td { background: color-mix(in srgb, var(--raised) 60%, transparent); }
+th.r, td.r { text-align: right; }
+th.where, td.where { padding-left: 18px; }
+td.fish { white-space: normal; min-width: 180px; }
+td.t { color: var(--muted); }
+td.mut { color: var(--ink2); }
+td.odds { color: var(--muted); }
+td.odds.hi { color: var(--ink); font-weight: 600; }
+.size { color: var(--muted); }
+.fname { font-weight: 600; }
+.chip { display: inline-block; font-size: 11px; line-height: 16px; padding: 0 6px; margin-left: 6px; border: 1px solid var(--border); border-radius: 5px;
+  color: var(--ink2); white-space: nowrap; vertical-align: 1px; }
+.chip.fx { border-color: color-mix(in srgb, var(--ink2) 45%, transparent); color: var(--ink); }
+.rar { display: inline-flex; align-items: center; gap: 7px; }
+.rar i { width: 9px; height: 9px; border-radius: 50%; flex: none; box-shadow: 0 0 0 1px var(--border); }
+.empty { color: var(--muted); padding: 14px 0; text-align: center; }
+.more { margin-top: 10px; background: var(--raised); border: 1px solid var(--border); border-radius: 8px; padding: 6px 14px; cursor: pointer; font-size: 13px; }
+.more:hover { border-color: var(--base); }
+.tablecard .more { align-self: flex-start; }
+.show-sm { display: none; }
+.rdot { width: 8px; height: 8px; border-radius: 50%; margin-right: 7px; vertical-align: 1px; box-shadow: 0 0 0 1px var(--border); }
+@media (max-width: 640px) { .hide-sm { display: none; } .show-sm { display: inline-block; }
+  td.fish { min-width: 0; } th, td { padding-right: 8px; } table { font-size: 13px; } }
+
+/* filter chips */
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg button { border: 1px solid var(--border); background: none; border-radius: 999px; padding: 3px 11px; font-size: 12px; color: var(--ink2); cursor: pointer; }
+.seg button:hover { color: var(--ink); border-color: var(--base); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--page); border-color: var(--ink); }
+.seg button .n { opacity: .7; margin-left: 4px; font-variant-numeric: tabular-nums; }
+
+/* bars */
+.bars { display: flex; flex-direction: column; gap: 2px; }
+.brow { display: grid; grid-template-columns: minmax(90px, 42%) minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 4px 4px; border-radius: 6px; }
+.brow:hover, .brow:focus { background: var(--raised); outline: none; }
+.blab { display: flex; align-items: center; gap: 7px; min-width: 0; font-size: 13px; }
+.blab span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.blab i { width: 9px; height: 9px; border-radius: 50%; flex: none; box-shadow: 0 0 0 1px var(--border); }
+.btrack { height: 10px; border-left: 1px solid var(--base); }
+.bfill { height: 100%; background: var(--s1); border-radius: 0 4px 4px 0; min-width: 2px; }
+.bval { font-size: 13px; font-variant-numeric: tabular-nums; color: var(--ink); min-width: 28px; text-align: right; }
+.bnote { color: var(--muted); font-size: 12px; margin-top: 6px; padding-left: 4px; }
+
+/* status */
+dl.st { display: grid; grid-template-columns: minmax(110px, auto) minmax(0, 1fr); gap: 0; margin: 0; }
+dl.st dt, dl.st dd { padding: 7px 0; border-top: 1px solid var(--grid); }
+dl.st dt { color: var(--muted); padding-right: 14px; font-size: 13px; }
+dl.st dd { margin: 0; overflow-wrap: anywhere; white-space: pre-line; font-size: 13px; }
+dl.st dt:first-of-type, dl.st dt:first-of-type + dd { border-top: 0; }
+.toggle { display: flex; gap: 12px; align-items: flex-start; cursor: pointer; padding: 4px 0 12px; }
+.toggle input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.toggle .knob { width: 36px; height: 20px; border-radius: 999px; background: var(--base); position: relative; flex: none; transition: background .15s; margin-top: 1px; }
+.toggle .knob::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .15s; }
+.toggle input:checked + .knob { background: var(--s1); }
+.toggle input:checked + .knob::after { transform: translateX(16px); }
+.toggle input:focus-visible + .knob { outline: 2px solid var(--s1); outline-offset: 2px; }
+.toggle .tx b { display: block; font-weight: 600; }
+.toggle .tx span { color: var(--muted); font-size: 12px; }
+pre.log { margin: 10px 0 0; font: 12px/1.55 ui-monospace, "Cascadia Mono", Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere;
+  max-height: 420px; overflow: auto; color: var(--ink2); }
+@media (max-width: 640px) {
+  .bar, main { padding-left: 16px; padding-right: 16px; }
+  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .tile .v { font-size: 21px; }
+  .hls { gap: 12px; }
+  .phase { order: 5; flex-basis: 100%; }
+  nav a { padding: 5px 8px; }
+  .card { padding: 14px; }
+}
 </style>
 </head>
 <body>
-<header>
-  <h1>FischHub</h1>
-  <span id="who" class="dim"></span>
-  <span id="live" class="pill dead">no data</span>
-  <span id="phase"></span>
-  <span id="reel" class="reel"></span>
+<header class="top">
+  <div class="bar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M2.5 12c3-4.5 8.5-6.5 13-3.5L21 5v14l-5.5-3.5c-4.5 3-10 1-13-3.5z"/><circle cx="8" cy="11" r=".6" fill="#fff"/></svg></span>
+      FischHub <span class="who" id="who"></span>
+    </div>
+    <span class="live" id="live" data-s="dead"><span class="dot"></span><span id="live-t">connecting</span></span>
+    <span class="phase" id="phase"></span>
+    <nav aria-label="Sections">
+      <a href="#session">Session</a><a href="#alltime">All time</a><a href="#status">Status</a>
+      <button class="iconbtn" id="theme" type="button" title="Switch theme" aria-label="Switch theme">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>
+      </button>
+    </nav>
+  </div>
 </header>
 <main>
-  <div id="banner" class="banner"></div>
-  <div class="kpis">
-    <div class="card kpi"><h2>Caught</h2><div class="v" id="k-caught">-</div><div class="s" id="k-caught-s"></div></div>
-    <div class="card kpi"><h2>Money</h2><div class="v" id="k-coins">-</div><div class="s" id="k-coins-s"></div></div>
-    <div class="card kpi"><h2>Level</h2><div class="v" id="k-level">-</div><div class="s" id="k-level-s"></div></div>
-    <div class="card kpi"><h2>Farming</h2><div class="v" id="k-farm">-</div><div class="s" id="k-farm-s"></div></div>
-    <div class="card kpi"><h2>Special catches</h2><div class="v" id="k-special">-</div><div class="s" id="k-special-s"></div></div>
-    <div class="card kpi"><h2>Instant catch</h2><div class="v" id="k-ic">-</div><div class="s" id="k-ic-s"></div></div>
-  </div>
+  <div class="banner" id="banner" role="status"><span class="ic" id="banner-i">!</span><div><b id="banner-t"></b><div class="d" id="banner-d"></div></div></div>
 
-  <section class="card span6"><h2>Catches this session</h2><canvas id="c-caught"></canvas></section>
-  <section class="card span6"><h2>C$ this session</h2><canvas id="c-coins"></canvas></section>
+  <section class="block" id="session">
+    <div class="card hero">
+      <div>
+        <div class="eyebrow">Fish this session</div>
+        <div class="big num" id="h-fish">-</div>
+        <div id="h-kv"></div>
+      </div>
+      <div>
+        <div class="charthead"><span class="muted" id="ch-fish-l">Total over time</span>
+          <div class="seg" id="hero-mode" role="group" aria-label="Chart"><button type="button" data-m="total" aria-pressed="true">Total</button><button type="button" data-m="rate" aria-pressed="false">Per hour</button></div></div>
+        <div class="chart" id="ch-fish" role="img" aria-label="Fish caught over this session"></div>
+        <details class="twin" id="tw-fish"><summary>Show data</summary><div class="wrap"></div></details>
+      </div>
+    </div>
 
-  <section class="card span7"><h2>Recent catches</h2><div class="scroll"><table>
-    <thead><tr><th>Time</th><th>Fish</th><th>Rarity</th><th>Weight</th><th>Mutation</th><th>Odds</th><th>Where</th></tr></thead>
-    <tbody id="recent"></tbody></table></div></section>
-  <section class="card span5"><h2>This session by fish</h2><div id="byfish" class="scroll"></div></section>
+    <div class="tiles">
+      <div class="card tile"><div class="k">C$ gained</div><div class="v" id="t-coins">-</div><div class="f" id="t-coins-f"></div></div>
+      <div class="card tile"><div class="k">XP gained</div><div class="v" id="t-xp">-</div><div class="f" id="t-xp-f"></div></div>
+      <div class="card tile"><div class="k">Farming</div><div class="v" id="t-farm">-</div><div class="f" id="t-farm-f"></div></div>
+      <div class="card tile"><div class="k">Mutated</div><div class="v" id="t-mut">-</div><div class="f" id="t-mut-f"></div></div>
+      <div class="card tile"><div class="k">Instant catch</div><div class="v" id="t-ic">-</div><div class="f" id="t-ic-f"></div></div>
+    </div>
 
-  <section class="card span4"><h2>This session by rarity</h2><div id="byrarity"></div></section>
-  <section class="card span4"><h2>Mutations this session</h2><div id="bymut"></div></section>
-  <section class="card span4"><h2>Status</h2><dl id="status"></dl>
-    <label class="sw"><input type="checkbox" id="helper"> AFK helper (focus Roblox briefly when it's idle and in the background)</label>
-    <div class="dim" id="helper-s" style="font-size:12px"></div>
-    <div class="dim" id="watch-s" style="font-size:12px;margin-top:6px"></div>
-    <div class="dim" id="shot-s" style="font-size:12px"></div></section>
+    <div class="hls">
+      <div class="card hl"><div class="k"><span class="pulse" id="reel-dot" hidden></span>On the line</div><div class="v" id="hl-reel">-</div><div class="s" id="hl-reel-s"></div></div>
+      <div class="card hl"><div class="k">Rarest this session</div><div class="v num" id="hl-rare">-</div><div class="s" id="hl-rare-s"></div></div>
+      <div class="card hl"><div class="k">Heaviest this session</div><div class="v num" id="hl-heavy">-</div><div class="s" id="hl-heavy-s"></div></div>
+    </div>
 
-  <section class="card span6"><h2>All time (every catch logged by FischHub)</h2><div id="alltime"></div></section>
-  <section class="card span6"><h2>Best catches, all time</h2><div class="scroll"><table>
-    <thead><tr><th>When</th><th>Fish</th><th>Rarity</th><th>Weight</th><th>Mutation</th></tr></thead>
-    <tbody id="best"></tbody></table></div></section>
+    <div class="grid">
+      <div class="card c8 tablecard">
+        <h3>Catches this session <span class="aside" id="rc-aside"></span></h3>
+        <div class="seg" id="filters" role="group" aria-label="Filter catches" style="margin-bottom:12px"></div>
+        <div class="tablewrap scroll"><table>
+          <thead><tr><th>Time</th><th>Fish</th><th class="hide-sm">Rarity</th><th class="hide-sm">Mutation</th><th class="r">Weight</th><th class="r hide-sm">Odds</th></tr></thead>
+          <tbody id="recent"></tbody></table></div>
+        <button class="more" id="more" type="button" hidden></button>
+      </div>
+      <div class="stack c4">
+        <div class="card"><h3>By rarity <span class="aside">rarest first</span></h3><div class="bars" id="b-rarity"></div></div>
+        <div class="card"><h3>Most caught</h3><div class="bars" id="b-fish"></div></div>
+        <div class="card"><h3>Mutations</h3><div class="bars" id="b-mut"></div></div>
+      </div>
+      <div class="card c6">
+        <h3>C$ gained <span class="aside">since FischHub loaded</span></h3>
+        <div class="chart" id="ch-coins" role="img" aria-label="C$ gained over this session"></div>
+        <details class="twin" id="tw-coins"><summary>Show data</summary><div class="wrap"></div></details>
+      </div>
+      <div class="card c6">
+        <h3>XP gained <span class="aside">since FischHub loaded</span></h3>
+        <div class="chart" id="ch-xp" role="img" aria-label="XP gained over this session"></div>
+        <details class="twin" id="tw-xp"><summary>Show data</summary><div class="wrap"></div></details>
+      </div>
+    </div>
+  </section>
 
-  <section class="card span12"><h2>Log</h2><pre id="log"></pre></section>
+  <section class="block" id="alltime">
+    <div class="sechead"><h2>All time</h2><span class="sub" id="at-sub">every catch FischHub has logged</span></div>
+    <div class="tiles" style="margin-top:0">
+      <div class="card tile"><div class="k">Catches logged</div><div class="v" id="a-n">-</div><div class="f" id="a-n-f"></div></div>
+      <div class="card tile"><div class="k">Different fish</div><div class="v" id="a-kinds">-</div><div class="f" id="a-kinds-f"></div></div>
+      <div class="card tile"><div class="k">Mutated</div><div class="v" id="a-mut">-</div><div class="f" id="a-mut-f"></div></div>
+      <div class="card tile"><div class="k">Shiny / sparkling</div><div class="v" id="a-fx">-</div><div class="f" id="a-fx-f"></div></div>
+      <div class="card tile"><div class="k">Rarest ever</div><div class="v" id="a-rare">-</div><div class="f" id="a-rare-f"></div></div>
+    </div>
+    <div class="grid">
+      <div class="card c4"><h3>By rarity <span class="aside">rarest first</span></h3><div class="bars" id="a-b-rarity"></div></div>
+      <div class="card c4"><h3>Most caught</h3><div class="bars" id="a-b-fish"></div></div>
+      <div class="card c4"><h3>Mutations</h3><div class="bars" id="a-b-mut"></div></div>
+      <div class="card c12">
+        <h3>Rarest catches <span class="aside">ranked by the game's odds</span></h3>
+        <div class="tablewrap"><table>
+          <thead><tr><th>When</th><th>Fish</th><th class="hide-sm">Rarity</th><th class="hide-sm">Mutation</th><th class="r">Weight</th><th class="r">Odds</th><th class="hide-sm where">Where</th></tr></thead>
+          <tbody id="best"></tbody></table></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="status">
+    <div class="sechead"><h2>Status</h2><span class="sub" id="st-sub"></span></div>
+    <div class="grid">
+      <div class="card c6"><h3>FischHub</h3><dl class="st" id="st"></dl></div>
+      <div class="card c6"><h3>Helper <span class="aside">this window</span></h3>
+        <label class="toggle"><input type="checkbox" id="helper"><span class="knob"></span>
+          <span class="tx"><b>AFK helper</b><span>When Roblox is idle in the background, bring it to the front for a moment and tap O then I.</span></span></label>
+        <dl class="st" id="hp"></dl>
+      </div>
+      <div class="card c12"><details class="logbox"><summary>Log &middot; last 40 lines</summary><pre class="log" id="log"></pre></details></div>
+    </div>
+  </section>
 </main>
+<div class="tip" id="tip" role="tooltip"></div>
 <script>
+"use strict";
 const RARITY = ["Trash","Common","Uncommon","Unusual","Rare","Legendary","Mythical","Exotic","Secret","Divine Secret","Apex",
   "Extinct","Limited","Special","Relic","Fragment","Gemstone","Seed"];
-const RCOLOR = { Trash:"#6e7681", Common:"#8b949e", Uncommon:"#3fb950", Unusual:"#2ea8a0", Rare:"#2f81f7", Legendary:"#e3872d",
-  Mythical:"#db61a2", Exotic:"#a371f7", Secret:"#f85149", "Divine Secret":"#d4a72c", Apex:"#b62324", Extinct:"#9e6a03",
-  Limited:"#1f9fbf", Special:"#bf8700", Relic:"#8957e5", Fragment:"#57606a", Gemstone:"#0fbf8f", Seed:"#5a9e32" };
-const rank = r => { const i = RARITY.indexOf(r); return i < 0 ? -1 : (i <= 10 ? i : 7); };
+const RCOLOR = { Trash:"#7d7c77", Common:"#b8b7b0", Uncommon:"#3fb950", Unusual:"#2ea8a0", Rare:"#3987e5", Legendary:"#e3872d",
+  Mythical:"#db61a2", Exotic:"#a371f7", Secret:"#f0503f", "Divine Secret":"#d4a72c", Apex:"#b62324", Extinct:"#9e6a03",
+  Limited:"#1f9fbf", Special:"#bf8700", Relic:"#8957e5", Fragment:"#6e7681", Gemstone:"#0fbf8f", Seed:"#5a9e32" };
+const DOT = "\u00b7";
 const $ = id => document.getElementById(id);
 const arr = v => Array.isArray(v) ? v : [];
-const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]));
-const num = n => (typeof n === "number" && isFinite(n)) ? Math.round(n).toLocaleString() : "-";
-const big = n => { if (typeof n !== "number" || !isFinite(n)) return "-"; const a = Math.abs(n);
-  return a >= 1e9 ? (n / 1e9).toFixed(3) + "B" : a >= 1e7 ? (n / 1e6).toFixed(2) + "M" : num(n); };
-const signed = n => (typeof n === "number" && isFinite(n)) ? (n >= 0 ? "+" : "") + Math.round(n).toLocaleString() : "-";
+const isNum = n => typeof n === "number" && isFinite(n);
+const rank = r => { const i = RARITY.indexOf(r); return i < 0 ? -1 : (i <= 10 ? i : 7); };
+const fmtN = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 });
+const fmtC = new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 2 });
+const num = n => isNum(n) ? fmtN.format(Math.round(n)) : "-";
+const compact = n => isNum(n) ? (Math.abs(n) < 10000 ? num(n) : fmtC.format(n)) : "-";
+const signed = n => isNum(n) ? (n > 0 ? "+" : n < 0 ? "\u2212" : "") + compact(Math.abs(n)) : "-";
 const dur = s => { s = Math.max(0, Math.floor(s || 0)); const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, x = s % 60;
-  return (h ? h + "h " : "") + String(m).padStart(h ? 2 : 1, "0") + "m " + String(x).padStart(2, "0") + "s"; };
-const clock = t => new Date(t * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  return h ? `${h}h ${String(m).padStart(2, "0")}m` : m ? `${m}m ${String(x).padStart(2, "0")}s` : `${x}s`; };
+const clock = (t, sec) => new Date(t * 1000).toLocaleTimeString([], sec === false ? { hour: "2-digit", minute: "2-digit" } : { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 const day = t => new Date(t * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-const tag = r => r ? `<span class="tag" style="background:${RCOLOR[r] || "#57606a"}">${esc(r)}</span>` : '<span class="dim">?</span>';
-const kg = w => (typeof w === "number") ? (w >= 100 ? Math.round(w).toLocaleString() : w.toFixed(1)) + " kg" : "";
-let rarityOf = {};
-const fishLabel = c => `${c.tag ? '<span class="dim">' + esc(c.tag) + "</span> " : ""}${c.size ? '<span class="dim">' + esc(c.size.toLowerCase()) + "</span> " : ""}<b>${esc(c.name)}</b>` +
-  ["shiny", "sparkling", "glitched"].filter(k => c[k]).map(k => ` <span class="mut">*${k}</span>`).join("");
-let S = null;
-let all = [];
+const ago = t => { const s = Date.now() / 1000 - t; return s < 60 ? "just now" : s < 3600 ? Math.floor(s / 60) + " min ago" : s < 86400 ? Math.floor(s / 3600) + " h ago" : day(t); };
+const kg = w => isNum(w) ? (w >= 100 ? num(w) : w.toFixed(1)) + " kg" : "";
+const oddsN = o => { const m = /1\s*\/\s*([\d.,]+)\s*([kmb])?/i.exec(o || ""); if (!m) return 0;
+  return Number(m[1].replace(/,/g, "")) * ({ k: 1e3, m: 1e6, b: 1e9 }[(m[2] || "").toLowerCase()] || 1); };
+const oddsOf = c => c._o != null ? c._o : (c._o = oddsN(c.odds));
+const cap = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+function kids(e, list) { e.replaceChildren(...list.filter(Boolean)); return e; }
+
+let S = null;          // state.json
+let age = 0;
+let all = [];          // catches.txt, oldest first
 let allFrom = 0;
+let rarityOf = {};
+let infoVer = 0;
+const rarityFor = c => c.rarity || rarityOf[c.name] || null;
 
-function bars(el, items, color) {
-  if (!items.length) { el.innerHTML = '<div class="empty">nothing yet</div>'; return; }
-  const max = Math.max(...items.map(i => i.n));
-  el.innerHTML = items.map(i => `<div class="row"><span class="lbl" title="${esc(i.label)}">${i.html || esc(i.label)}</span>
-    <span class="track"><span class="fill" style="display:block;width:${(i.n / max * 100).toFixed(1)}%;background:${i.color || color}"></span></span>
-    <span class="n">${num(i.n)}</span></div>`).join("");
+// ---------------------------------------------------------------- theme
+function setTheme(t) {
+  document.documentElement.dataset.theme = t;
+  try { localStorage.setItem("fh-theme", t); } catch (e) {}
+  $("theme").title = t === "dark" ? "Switch to light" : "Switch to dark";
+}
+(function () {
+  let t = null;
+  try { t = localStorage.getItem("fh-theme"); } catch (e) {}
+  if (t !== "dark" && t !== "light") t = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+  setTheme(t);
+})();
+$("theme").addEventListener("click", () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+
+// ---------------------------------------------------------------- tooltip
+const tip = $("tip");
+function showTip(x, y, title, rows) {
+  const parts = [];
+  if (title) parts.push(el("div", "t", title));
+  rows.forEach(r => {
+    const row = el("div", "r"), left = el("span");
+    if (r.color) { const sw = el("i", "sw"); sw.style.background = r.color; left.append(sw); }
+    left.append(document.createTextNode(r.label));
+    row.append(left, el("b", null, r.value));
+    parts.push(row);
+  });
+  kids(tip, parts);
+  tip.style.display = "block";
+  const w = tip.offsetWidth, h = tip.offsetHeight, pad = 14;
+  let left = x + pad, top = y + pad;
+  if (left + w > window.innerWidth - 8) left = x - w - pad;
+  if (top + h > window.innerHeight - 8) top = y - h - pad;
+  tip.style.left = Math.max(8, left) + "px";
+  tip.style.top = Math.max(8, top) + "px";
+}
+const hideTip = () => { tip.style.display = "none"; };
+
+// ---------------------------------------------------------------- line charts (one series each, crosshair + tooltip)
+function niceTicks(lo, hi, n, int) {
+  if (!(hi > lo)) hi = lo + (int ? 4 : 1);
+  const raw = (hi - lo) / n, mag = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / mag;
+  let step = (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * mag;
+  if (int) step = Math.max(1, Math.round(step));
+  const out = [];
+  for (let v = Math.floor(lo / step) * step; v <= hi + step * 0.999; v += step) out.push(Math.round(v / step) * step);
+  if (out[out.length - 1] < hi) out.push(out[out.length - 1] + step);
+  return out;
+}
+const NS = "http://www.w3.org/2000/svg";
+function sv(tag, attrs, text) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (text != null) e.textContent = text; return e; }
+
+function makeChart(id, twinId, opt) {
+  const box = $(id), c = { box, opt, pts: [], sig: "", g: null, hx: null };
+  function geometry() {
+    const w = box.clientWidth, h = box.clientHeight, pts = c.pts;
+    const P = { l: 46, r: 14, t: 10, b: 24 };
+    const x0 = pts[0][0], x1 = Math.max(pts[pts.length - 1][0], x0 + 1);
+    let lo = Infinity, hi = -Infinity;
+    pts.forEach(p => { if (p[1] < lo) lo = p[1]; if (p[1] > hi) hi = p[1]; });
+    const ticks = niceTicks(Math.min(0, lo), Math.max(hi, 0), 4, opt.int);
+    const y0 = ticks[0], y1 = ticks[ticks.length - 1];
+    return { w, h, P, x0, x1, ticks,
+      X: t => P.l + (t - x0) / (x1 - x0) * (w - P.l - P.r),
+      Y: v => P.t + (1 - (v - y0) / (y1 - y0)) * (h - P.t - P.b) };
+  }
+  function draw() {
+    const pts = c.pts;
+    if (pts.length < 2 || box.clientWidth < 40) {
+      c.g = null;
+      kids(box, [el("div", "chart-empty", opt.empty)]);
+      return;
+    }
+    const g = c.g = geometry(), { w, h, P, X, Y } = g;
+    const svg = sv("svg", { viewBox: `0 0 ${w} ${h}`, preserveAspectRatio: "none", "aria-hidden": "true" });
+    g.ticks.forEach(v => {
+      const y = Y(v);
+      svg.append(sv("line", { x1: P.l, x2: w - P.r, y1: y, y2: y, class: v === 0 ? "bl" : "gl" }));
+      svg.append(sv("text", { x: P.l - 8, y: y + 4, "text-anchor": "end", class: "ax" }, opt.tick(v)));
+    });
+    const span = g.x1 - g.x0, nx = w < 420 ? 3 : 5;
+    for (let i = 0; i < nx; i++) {
+      const t = g.x0 + span * i / (nx - 1);
+      svg.append(sv("text", { x: X(t), y: h - 6, "text-anchor": i === 0 ? "start" : i === nx - 1 ? "end" : "middle", class: "ax" }, clock(t, span < 600)));
+    }
+    // thin the path to about one point per pixel
+    const step = Math.max(1, Math.floor(pts.length / Math.max(60, w - P.l - P.r)));
+    const vis = pts.filter((p, i) => i % step === 0 || i === pts.length - 1);
+    const line = vis.map((p, i) => i === 0 ? "M" + X(p[0]).toFixed(1) + "," + Y(p[1]).toFixed(1)
+      : opt.step ? "H" + X(p[0]).toFixed(1) + "V" + Y(p[1]).toFixed(1) : "L" + X(p[0]).toFixed(1) + "," + Y(p[1]).toFixed(1)).join("");
+    const zero = Y(Math.max(g.ticks[0], Math.min(0, g.ticks[g.ticks.length - 1])));
+    svg.append(sv("path", { d: line + `L${X(vis[vis.length - 1][0]).toFixed(1)},${zero}L${X(vis[0][0]).toFixed(1)},${zero}Z`,
+      style: `fill:var(${opt.color});opacity:.10;stroke:none` }));
+    svg.append(sv("path", { d: line, style: `fill:none;stroke:var(${opt.color});stroke-width:2;stroke-linejoin:round;stroke-linecap:round` }));
+    const last = pts[pts.length - 1];
+    svg.append(sv("circle", { cx: X(last[0]), cy: Y(last[1]), r: 4, style: `fill:var(${opt.color});stroke:var(--surface);stroke-width:2` }));
+    c.cross = sv("line", { y1: P.t, y2: h - P.b, class: "cross", visibility: "hidden" });
+    c.hdot = sv("circle", { r: 4.5, visibility: "hidden", style: `fill:var(${opt.color});stroke:var(--surface);stroke-width:2` });
+    svg.append(c.cross, c.hdot);
+    kids(box, [svg]);
+    if (c.hx != null) hover(c.hx, c.hy);
+  }
+  function hover(clientX, clientY) {
+    c.hx = clientX; c.hy = clientY;
+    const g = c.g;
+    if (!g) return;
+    const r = box.getBoundingClientRect(), px = clientX - r.left;
+    const t = g.x0 + (px - g.P.l) / (g.w - g.P.l - g.P.r) * (g.x1 - g.x0);
+    let a = 0, b = c.pts.length - 1;
+    while (b - a > 1) { const m = (a + b) >> 1; if (c.pts[m][0] < t) a = m; else b = m; }
+    const p = Math.abs(c.pts[a][0] - t) <= Math.abs(c.pts[b][0] - t) ? c.pts[a] : c.pts[b];
+    const x = g.X(p[0]), y = g.Y(p[1]);
+    c.cross.setAttribute("x1", x); c.cross.setAttribute("x2", x); c.cross.setAttribute("visibility", "visible");
+    c.hdot.setAttribute("cx", x); c.hdot.setAttribute("cy", y); c.hdot.setAttribute("visibility", "visible");
+    showTip(clientX, clientY, clock(p[0]), [{ label: opt.name, value: opt.value(p[1]), color: `var(${opt.color})` }]);
+  }
+  box.addEventListener("pointermove", e => hover(e.clientX, e.clientY));
+  box.addEventListener("pointerleave", () => {
+    c.hx = null; hideTip();
+    if (c.cross) { c.cross.setAttribute("visibility", "hidden"); c.hdot.setAttribute("visibility", "hidden"); }
+  });
+  const twin = $(twinId);
+  function drawTwin() {
+    if (!twin.open) return;
+    const pts = c.pts, body = twin.querySelector(".wrap");
+    if (!pts.length) { kids(body, [el("div", "empty", "no data yet")]); return; }
+    const n = Math.min(pts.length, 30), rows = [];
+    for (let i = 0; i < n; i++) rows.push(pts[Math.round(i * (pts.length - 1) / Math.max(1, n - 1))]);
+    const tb = el("tbody");
+    rows.reverse().forEach(p => { const tr = el("tr"); tr.append(el("td", "t", clock(p[0])), el("td", "r", opt.value(p[1]))); tb.append(tr); });
+    const th = el("thead"), hr = el("tr");
+    hr.append(el("th", null, "Time"), el("th", "r", opt.name));
+    th.append(hr);
+    kids(body, [kids(el("table"), [th, tb])]);
+  }
+  twin.addEventListener("toggle", drawTwin);
+  new ResizeObserver(() => draw()).observe(box);
+  c.set = (pts, o) => {
+    if (o) Object.assign(opt, o);
+    const sig = (opt.key || "") + "|" + pts.length + "|" + (pts.length ? pts[pts.length - 1].join(",") : "");
+    if (sig === c.sig) return;
+    c.sig = sig; c.pts = pts; draw(); drawTwin();
+  };
+  return c;
 }
 
-function chart(canvas, pts, color) {
-  const dpr = window.devicePixelRatio || 1, w = canvas.clientWidth, h = canvas.clientHeight;
-  canvas.width = w * dpr; canvas.height = h * dpr;
-  const g = canvas.getContext("2d");
-  g.scale(dpr, dpr); g.clearRect(0, 0, w, h);
-  const css = getComputedStyle(document.body);
-  g.font = "11px system-ui"; g.fillStyle = css.getPropertyValue("--dim");
-  if (pts.length < 2) { g.fillText("a point every 30 s - check back in a minute", 8, h / 2); return; }
-  const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
-  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
-  const L = 64, R = 10, T = 10, B = 22;
-  const X = x => L + (x - x0) / Math.max(1, x1 - x0) * (w - L - R);
-  const Y = y => T + (1 - (y - y0) / Math.max(1e-9, y1 - y0)) * (h - T - B);
-  g.strokeStyle = css.getPropertyValue("--line"); g.lineWidth = 1;
-  g.beginPath(); g.moveTo(L, T); g.lineTo(L, h - B); g.lineTo(w - R, h - B); g.stroke();
-  g.fillText(big(y1), 4, T + 8); g.fillText(big(y0), 4, h - B - 4);
-  g.fillText(clock(x0), L, h - 6); const e = clock(x1); g.fillText(e, w - R - g.measureText(e).width, h - 6);
-  g.strokeStyle = color; g.lineWidth = 2; g.beginPath();
-  pts.forEach((p, i) => i ? g.lineTo(X(p[0]), Y(p[1])) : g.moveTo(X(p[0]), Y(p[1])));
-  g.stroke();
+const chFish = makeChart("ch-fish", "tw-fish", { name: "Fish", color: "--s1", int: true, tick: v => compact(v), value: v => num(v),
+  empty: "The line starts with your first catch." });
+const chCoins = makeChart("ch-coins", "tw-coins", { name: "C$ gained", color: "--s2", tick: v => signed(v), value: v => signed(v) + " C$",
+  empty: "A point every 30 s \u2014 check back in a minute." });
+const chXp = makeChart("ch-xp", "tw-xp", { name: "XP gained", color: "--s1", tick: v => signed(v), value: v => signed(v) + " XP",
+  empty: "A point every 30 s \u2014 check back in a minute." });
+
+// ---------------------------------------------------------------- bars (single hue, rarity dot as the label's marker)
+function bars(box, items, opt) {
+  opt = opt || {};
+  if (!items.length) { kids(box, [el("div", "empty", opt.empty || "nothing yet")]); return; }
+  const total = opt.total || items.reduce((s, i) => s + i.n, 0);
+  const shown = items.slice(0, opt.max || 8), max = Math.max(...shown.map(i => i.n));
+  const rows = shown.map(i => {
+    const row = el("div", "brow"), lab = el("span", "blab");
+    row.tabIndex = 0;
+    row.setAttribute("aria-label", `${i.label}: ${num(i.n)}`);
+    if (i.dot) { const d = el("i"); d.style.background = i.dot; lab.append(d); }
+    lab.append(el("span", null, i.label));
+    const track = el("span", "btrack"), fill = el("span", "bfill");
+    fill.style.display = "block";
+    fill.style.width = (i.n / max * 100).toFixed(1) + "%";
+    track.append(fill);
+    row.append(lab, track, el("span", "bval", num(i.n)));
+    const show = e => { const r = row.getBoundingClientRect();
+      showTip(e && e.clientX != null ? e.clientX : r.right - 40, e && e.clientY != null ? e.clientY : r.top,
+        i.label, [{ label: opt.unit || "caught", value: `${num(i.n)} (${(i.n / total * 100).toFixed(1)}%)` }]); };
+    row.addEventListener("pointermove", show);
+    row.addEventListener("focus", () => show());
+    row.addEventListener("pointerleave", hideTip);
+    row.addEventListener("blur", hideTip);
+    return row;
+  });
+  if (items.length > shown.length) {
+    const rest = items.slice(shown.length).reduce((s, i) => s + i.n, 0);
+    rows.push(el("div", "bnote", `+ ${items.length - shown.length} more (${num(rest)})`));
+  }
+  kids(box, rows);
+}
+function tally(list, keyFn) {
+  const m = new Map();
+  list.forEach(c => { const k = keyFn(c); if (k) m.set(k, (m.get(k) || 0) + 1); });
+  return [...m.entries()].map(([label, n]) => ({ label, n }));
+}
+function rarityBars(box, list) {
+  const items = tally(list, c => rarityFor(c) || "Unknown").sort((a, b) => rank(b.label) - rank(a.label) || b.n - a.n);
+  items.forEach(i => i.dot = RCOLOR[i.label] || "#6e7681");
+  bars(box, items, { max: 12 });
+}
+function fishBars(box, list) {
+  const items = tally(list, c => c.name).sort((a, b) => b.n - a.n);
+  items.forEach(i => i.dot = RCOLOR[rarityOf[i.label]] || RCOLOR[(list.find(c => c.name === i.label) || {}).rarity] || null);
+  bars(box, items, { max: 8 });
+}
+function mutBars(box, list) {
+  const items = tally(list, c => c.mutation).sort((a, b) => b.n - a.n);
+  bars(box, items, { max: 8, total: list.length, empty: "no mutations yet" });
 }
 
-function render() {
+// ---------------------------------------------------------------- fish cells
+function fishCell(c) {
+  const td = el("td", "fish"), r = rarityFor(c);
+  if (r) { const d = el("i", "rdot show-sm"); d.style.background = RCOLOR[r] || "#6e7681"; d.title = r; td.append(d); }
+  if (c.size) td.append(el("span", "size", cap(String(c.size).toLowerCase()) + " "));
+  td.append(el("span", "fname", c.name || "unknown"));
+  if (c.shiny) td.append(el("span", "chip fx", "\u2727 Shiny"));
+  if (c.sparkling) td.append(el("span", "chip fx", "\u2726 Sparkling"));
+  if (c.glitched) td.append(el("span", "chip fx", "Glitched"));
+  if (c.tag) td.append(el("span", "chip", cap(c.tag)));
+  if (c.source === "reel") { const s = el("span", "chip", "reel read"); s.title = "The game didn't announce this one, so FischHub read the reel"; td.append(s); }
+  return td;
+}
+function rarityCell(r) {
+  const td = el("td", "hide-sm");
+  if (!r) { td.append(el("span", "muted", "?")); return td; }
+  const s = el("span", "rar"), d = el("i");
+  d.style.background = RCOLOR[r] || "#6e7681";
+  s.append(d, document.createTextNode(r));
+  td.append(s);
+  return td;
+}
+function fishText(c) {
+  return [c.shiny && "shiny", c.sparkling && "sparkling", c.size && String(c.size).toLowerCase(), c.mutation, c.name].filter(Boolean).join(" ");
+}
+function catchRow(c, when, short, oddsCls) {
+  const tr = el("tr"), tt = el("td", "t");
+  tt.append(el("span", "hide-sm", when(c.t)), el("span", "show-sm", short(c.t)));
+  const odds = oddsOf(c), td = el("td", "r odds " + (oddsCls || "hide-sm") + (odds >= 1000 ? " hi" : ""), c.odds || "\u2014");
+  tr.append(tt, fishCell(c), rarityCell(rarityFor(c)),
+    el("td", "mut hide-sm", c.mutation || "\u2014"), el("td", "r", kg(c.weight)), td);
+  return tr;
+}
+
+// ---------------------------------------------------------------- session catches
+const keyOf = c => [c.t, c.name, c.weight, c.tag || "", c.mutation || ""].join("|");
+let sess = [], sessSig = "";
+function sessionList() {
+  if (!S) return [];
+  const sig = all.length + "|" + S.t + "|" + S.startedAt;
+  if (sig === sessSig) return sess;
+  sessSig = sig;
+  const start = (S.startedAt || 0) - 1, who = S.player, m = new Map();
+  all.forEach((c, i) => { if (c.t >= start && (!c.player || !who || c.player === who)) m.set(keyOf(c), [c, i]); });
+  arr(S.recent).forEach((c, i) => { const k = keyOf(c); if (!m.has(k)) m.set(k, [c, 1e9 - i]); });
+  sess = [...m.values()].sort((a, b) => b[0].t - a[0].t || b[1] - a[1]).map(x => x[0]);
+  return sess;
+}
+
+const FILTERS = [
+  ["all", "All", () => true],
+  ["mut", "Mutated", c => !!c.mutation],
+  ["fx", "Shiny / sparkling", c => c.shiny || c.sparkling || c.glitched],
+  ["rare", "Mythical +", c => rank(rarityFor(c)) >= 6],
+  ["bonus", "Extra / duplicate", c => !!c.tag],
+];
+let filter = "all", limit = 100, tableSig = "", heroMode = "total";
+document.querySelectorAll("#hero-mode button").forEach(b => b.addEventListener("click", () => {
+  heroMode = b.dataset.m;
+  document.querySelectorAll("#hero-mode button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+  renderSession();
+}));
+function renderFilters(list) {
+  kids($("filters"), FILTERS.map(([id, label, fn]) => {
+    const b = el("button", null, label);
+    b.type = "button";
+    b.setAttribute("aria-pressed", String(filter === id));
+    b.append(el("span", "n", num(list.filter(fn).length)));
+    b.addEventListener("click", () => { filter = id; limit = 100; tableSig = ""; renderSession(); });
+    return b;
+  }));
+}
+function renderTable(list) {
+  const fn = FILTERS.find(f => f[0] === filter)[2], rows = list.filter(fn);
+  const sig = [filter, limit, rows.length, rows.length && keyOf(rows[0]), infoVer].join("|");
+  if (sig === tableSig) return;
+  tableSig = sig;
+  renderFilters(list);
+  const tb = $("recent");
+  if (!rows.length) {
+    const tr = el("tr"), td = el("td", "empty", list.length ? "nothing matches this filter" : "no catches yet this session");
+    td.colSpan = 6; tr.append(td); kids(tb, [tr]);
+  } else kids(tb, rows.slice(0, limit).map(c => catchRow(c, t => clock(t), t => clock(t, false))));
+  const more = $("more"), left = rows.length - limit;
+  more.hidden = left <= 0;
+  more.textContent = `Show ${num(Math.min(left, 200))} more`;
+  $("rc-aside").textContent = rows.length ? `${num(rows.length)} ${filter === "all" ? "fish" : "shown"}` : "";
+}
+$("more").addEventListener("click", () => { limit += 200; tableSig = ""; renderSession(); });
+
+function best(list, score) { let b = null, bs = -Infinity; list.forEach(c => { const s = score(c); if (s > bs) { bs = s; b = c; } }); return bs > 0 ? b : null; }
+
+function renderSession() {
   if (!S) return;
-  const s = S, n = s.numbers || {}, b = s.base || {}, st = s.stats || {};
-  $("who").textContent = `${s.player || ""} - v${s.v || "?"}`;
-  $("phase").textContent = `${s.autoFish ? "Farming" : "Auto fish off"} - ${s.phase || ""}${s.note ? " - " + s.note : ""}`;
+  const s = S, st = s.stats || {}, n = s.numbers || {}, b = s.base || {}, list = sessionList();
+  const fish = isNum(st.fish) ? st.fish : list.length;
   const hrs = (s.farm || 0) / 3600;
-  $("k-caught").textContent = num(st.caught);
-  $("k-caught-s").textContent = `${hrs > 0.02 ? num(st.caught / hrs) + " / hr - " : ""}${st.bonus ? "+" + num(st.bonus) + " extra/duplicate - " : ""}lost ${num(st.lost)}${st.unreadFish ? " - " + st.unreadFish + " unread" : ""}`;
-  const dc = (n.coins != null && b.coins != null) ? n.coins - b.coins : null;
-  $("k-coins").textContent = big(n.coins); $("k-coins").title = num(n.coins) + " C$";
-  $("k-coins-s").textContent = `${signed(dc)} this session${hrs > 0.02 && dc != null ? " - " + signed(dc / hrs) + " / hr" : ""}`;
-  $("k-level").textContent = num(n.level);
-  const dx = (n.xp != null && b.xp != null) ? n.xp - b.xp : null;
-  $("k-level-s").textContent = `xp ${signed(dx)}${hrs > 0.02 && dx != null ? " - " + signed(dx / hrs) + " / hr" : ""}`;
-  $("k-farm").textContent = dur(s.farm);
-  $("k-farm-s").textContent = `script up ${dur(s.uptime)} - casts ${num(st.casts)}${st.lastCycle ? " - " + st.lastCycle.toFixed(1) + " s/fish" : ""}`;
-  const d = k => (n[k] != null && b[k] != null) ? n[k] - b[k] : 0;
-  $("k-special").textContent = num(d("mutations") + d("shiny") + d("sparkling"));
-  $("k-special-s").textContent = `mutated ${num(d("mutations"))} - shiny ${num(d("shiny"))} - sparkling ${num(d("sparkling"))}`;
+  $("h-fish").textContent = num(fish);
+  document.title = `${num(fish)} fish ${DOT} FischHub`;
+  const kv = [["Per hour", hrs >= 1 / 60 ? num(fish / hrs) : "-"],
+    ["Extra & duplicate", num(st.bonus || 0), "Fish the game gives on top of the one you reeled in"],
+    ["Game's catch counter", num(st.caught), "Roblox's own counter counts one fish per reel and skips Extra!/Duplicate! fish"]];
+  if (st.lost) kv.push(["Lost", num(st.lost)]);
+  if (st.unreadFish) kv.push(["Couldn't be read", num(st.unreadFish)]);
+  kids($("h-kv"), kv.map(([k, v, t]) => { const d = el("div", "kv"); if (t) d.title = t; d.append(el("span", null, k), el("b", null, v)); return d; }));
+
+  // fish over time: every catch this session (running total), or the catch rate in about 40 buckets
+  const asc = list.slice().reverse(), t0 = s.startedAt || (asc[0] && asc[0].t) || s.t;
+  if (heroMode === "rate") {
+    const width = Math.max(60, Math.ceil((s.t - t0) / 40 / 60) * 60), pts = [];
+    let i = 0;
+    for (let a = t0; a < s.t; a += width) {
+      const b = Math.min(a + width, s.t);
+      let n = 0;
+      while (i < asc.length && asc[i].t < a + width) { if (asc[i].t >= a) n++; i++; }
+      if (b - a >= width * 0.25) pts.push([b, n * 3600 / (b - a)]);
+    }
+    $("ch-fish-l").textContent = `Per hour, in ${width / 60}-minute steps`;
+    chFish.set(pts.length >= 2 ? pts : [], { key: "rate", step: false, name: "Fish per hour", empty: "The rate shows up after a few minutes of fishing." });
+  } else {
+    const pts = [[t0, 0]];
+    asc.forEach((c, i) => pts.push([c.t, i + 1]));
+    if (s.t > pts[pts.length - 1][0]) pts.push([s.t, asc.length]);
+    $("ch-fish-l").textContent = "Total over time";
+    chFish.set(asc.length ? pts : [], { key: "total", step: true, name: "Fish", empty: "The line starts with your first catch." });
+  }
+
+  const delta = k => isNum(n[k]) && isNum(b[k]) ? n[k] - b[k] : null;
+  const dc = delta("coins"), dx = delta("xp"), rate = v => hrs >= 1 / 60 && v != null ? signed(v / hrs) + " / hr" : null;
+  $("t-coins").textContent = signed(dc); $("t-coins").title = dc != null ? num(dc) + " C$" : "";
+  $("t-coins-f").textContent = [rate(dc), isNum(n.coins) ? "balance " + compact(n.coins) : null].filter(Boolean).join(` ${DOT} `);
+  $("t-xp").textContent = signed(dx);
+  $("t-xp-f").textContent = [isNum(n.level) ? "level " + num(n.level) : null, rate(dx)].filter(Boolean).join(` ${DOT} `);
+  $("t-farm").textContent = dur(s.farm);
+  $("t-farm-f").textContent = [fish && s.farm ? (s.farm / fish).toFixed(1) + " s per fish" : null, num(st.casts) + " casts"].filter(Boolean).join(` ${DOT} `);
+  const muts = list.filter(c => c.mutation).length, sh = list.filter(c => c.shiny).length, sp = list.filter(c => c.sparkling).length;
+  $("t-mut").textContent = list.length ? `${num(muts)}` : "-";
+  $("t-mut-f").textContent = list.length ? `${(muts / list.length * 100).toFixed(0)}% ${DOT} shiny ${num(sh)} ${DOT} sparkling ${num(sp)}` : "";
   const ic = s.ic || {};
-  $("k-ic").textContent = s.instantCatch ? `${num(ic.acquired)}/${num(ic.reels)}` : "off";
-  $("k-ic-s").textContent = s.instantCatch ? `reels hooked - ${ic.status || ""}` : "";
+  if (s.instantCatch && ic.reels) {
+    $("t-ic").textContent = (ic.acquired / ic.reels * 100).toFixed(0) + "%";
+    $("t-ic-f").textContent = `${num(ic.acquired)} of ${num(ic.reels)} reels hooked`;
+  } else { $("t-ic").textContent = s.instantCatch ? "on" : "off"; $("t-ic-f").textContent = s.instantCatch ? "waiting for a reel" : ""; }
 
-  const disc = s.disconnect;
-  $("banner").style.display = disc ? "block" : "none";
-  if (disc) $("banner").innerHTML = `<b>${esc(disc.title || "Disconnected")}</b> at ${clock(disc.t)} - ${esc(disc.message || "")}<div class="dim" style="font-size:12px;margin-top:4px">${esc(s.alertStatus || "")}</div>`;
   const r = s.reeling;
-  $("reel").style.display = r ? "block" : "none";
-  if (r) $("reel").innerHTML = `Reeling: ${r.mutation ? '<span class="mut">' + esc(r.mutation) + "</span> " : ""}<b>${esc(r.name)}</b> ${kg(r.weight)} ${tag(r.rarity || rarityOf[r.name])}`;
+  $("reel-dot").hidden = !r;
+  if (r) {
+    $("hl-reel").textContent = r.name || "unknown fish";
+    $("hl-reel-s").textContent = [r.shiny && "shiny", r.sparkling && "sparkling", r.mutation, kg(r.weight), r.rarity || rarityOf[r.name]].filter(Boolean).join(` ${DOT} `);
+  } else {
+    $("hl-reel").textContent = s.autoFish ? "Waiting for a bite" : "Not fishing";
+    $("hl-reel-s").textContent = [s.phase, s.note].filter(Boolean).join(` ${DOT} `);
+  }
+  const rare = best(list, oddsOf);
+  $("hl-rare").textContent = rare ? rare.odds : "-";
+  $("hl-rare-s").textContent = rare ? `${fishText(rare)} ${DOT} ${ago(rare.t)}` : "odds show up with the game's catch line";
+  const heavy = best(list, c => c.weight || 0);
+  $("hl-heavy").textContent = heavy ? kg(heavy.weight) : "-";
+  $("hl-heavy-s").textContent = heavy ? `${fishText(heavy)} ${DOT} ${ago(heavy.t)}` : "";
 
-  const rows = arr(s.recent);
-  $("recent").innerHTML = rows.length ? rows.map(c => `<tr><td>${clock(c.t)}</td><td class="name">${fishLabel(c)}</td>
-    <td>${tag(c.rarity || rarityOf[c.name])}</td><td>${kg(c.weight)}</td><td class="mut">${esc(c.mutation || "")}</td><td class="dim">${esc(c.odds || "")}</td><td class="dim">${esc(c.spot || "")}</td></tr>`).join("")
-    : '<tr><td colspan="7" class="empty">no catches read yet this session</td></tr>';
+  renderTable(list);
+  const bsig = list.length + "|" + infoVer;
+  if (bsig !== renderSession.bsig) {
+    renderSession.bsig = bsig;
+    rarityBars($("b-rarity"), list); fishBars($("b-fish"), list); mutBars($("b-mut"), list);
+  }
 
-  bars($("byfish"), arr(s.counts).map(c => { const ra = c.rarity || rarityOf[c.name];
-    return { label: c.name, n: c.n, color: RCOLOR[ra] || "var(--bar)", html: esc(c.name) }; }), "var(--bar)");
-  const byR = {};
-  arr(s.counts).forEach(c => { const ra = c.rarity || rarityOf[c.name] || "unknown"; byR[ra] = (byR[ra] || 0) + c.n; });
-  bars($("byrarity"), Object.keys(byR).sort((a, c) => rank(c) - rank(a)).map(k => ({ label: k, n: byR[k], color: RCOLOR[k] || "#57606a" })));
-  const byM = {};
-  rows.forEach(c => { if (c.mutation) byM[c.mutation] = (byM[c.mutation] || 0) + 1; });
-  bars($("bymut"), Object.keys(byM).sort((a, c) => byM[c] - byM[a]).slice(0, 12).map(k => ({ label: k, n: byM[k] })), "var(--warn)");
+  const smp = arr(s.samples), live = s.t;
+  const series = k => { if (!isNum(b[k])) return [];
+    const p = smp.filter(x => isNum(x[k])).map(x => [x.t, x[k] - b[k]]);
+    if (p.length && isNum(n[k]) && live > p[p.length - 1][0]) p.push([live, n[k] - b[k]]);
+    return p; };
+  chCoins.set(series("coins")); chXp.set(series("xp"));
+}
 
-  const a = s.afk || {};
-  const loc = s.location || {};
+function renderStatus() {
+  if (!S) return;
+  const s = S, a = s.afk || {}, loc = s.location || {}, ic = s.ic || {};
   const items = [
-    ["Mode", `${s.mode || ""} - ${s.castStyle || ""} cast`], ["Rod", `${s.rod || "none"}${s.rodState ? " (" + s.rodState + ")" : ""}`],
-    ["Instant catch", ic.status || "off"],
-    ["Anti-AFK", a.on ? `${a.status || ""}${a.taps ? " - " + a.taps + " taps" : ""}` : "off"],
-    ["Location", `${loc.spot || "-"}${loc.x != null ? "  (" + loc.x + ", " + loc.y + ", " + loc.z + ")" : ""}`],
-    ["Webhook", s.hook || ""], ["Aurora totems", s.aurora || ""], ["Fish info", s.fishStatus || ""],
+    ["Auto fish", s.autoFish ? `on ${DOT} ${s.phase || ""}${s.note ? " (" + s.note + ")" : ""}` : "off"],
+    ["Mode", [s.mode, s.castStyle && s.castStyle + " cast"].filter(Boolean).join(` ${DOT} `)],
+    ["Rod", `${s.rod || "none"}${s.rodState ? " (" + s.rodState + ")" : ""}`],
+    ["Instant catch", s.instantCatch ? ic.status || "on" : "off"],
+    ["Anti-AFK", a.on ? `${a.status || ""}${a.taps ? ` ${DOT} ${a.taps} taps` : ""}${a.needFocus ? ` ${DOT} Roblox needs focus` : ""}` : "off"],
+    ["Location", `${loc.spot || "-"}${isNum(loc.x) ? `  (${loc.x}, ${loc.y}, ${loc.z})` : ""}`],
+    ["Webhook", s.hook || "off"], ["Aurora totems", s.aurora || "-"], ["Fish info", s.fishStatus || "-"],
+    ["Script", `v${s.v || "?"} ${DOT} up ${dur(s.uptime)}`],
   ];
   if (s.manual) items.unshift(["Paused", s.manual]);
   if (s.blocked) items.unshift(["Blocked", s.blocked]);
-  $("status").innerHTML = items.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("");
-
+  kids($("st"), items.flatMap(([k, v]) => [el("dt", null, k), el("dd", null, v)]));
   $("log").textContent = arr(s.log).slice().reverse().join("\n");
-  const smp = arr(s.samples);
-  chart($("c-caught"), smp.filter(p => p.caught != null).map(p => [p.t, p.caught]), getComputedStyle(document.body).getPropertyValue("--accent"));
-  chart($("c-coins"), smp.filter(p => p.coins != null).map(p => [p.t, p.coins]), getComputedStyle(document.body).getPropertyValue("--good"));
 }
 
-function renderAll() {
-  const el = $("alltime");
-  if (!all.length) { el.innerHTML = '<div class="empty">no catches logged yet - they are added as you fish</div>'; $("best").innerHTML = ""; return; }
+function renderAllTime() {
   const named = all.filter(c => c.name && c.name !== "unknown");
-  const species = {}; named.forEach(c => species[c.name] = (species[c.name] || 0) + 1);
-  const byR = {}; named.forEach(c => { const r = c.rarity || rarityOf[c.name] || "unknown"; byR[r] = (byR[r] || 0) + 1; });
+  if (!all.length) {
+    ["a-n", "a-kinds", "a-mut", "a-fx", "a-rare"].forEach(id => { $(id).textContent = "-"; $(id + "-f").textContent = ""; });
+    $("a-n-f").textContent = "catches are added here as you fish";
+    ["a-b-rarity", "a-b-fish", "a-b-mut"].forEach(id => kids($(id), [el("div", "empty", "nothing logged yet")]));
+    kids($("best"), []);
+    return;
+  }
+  const players = new Set(all.map(c => c.player).filter(Boolean));
+  $("at-sub").textContent = `every catch FischHub has logged${players.size > 1 ? ` ${DOT} ${players.size} accounts` : ""}`;
+  $("a-n").textContent = compact(all.length); $("a-n").title = num(all.length);
+  $("a-n-f").textContent = "since " + day(all[0].t);
+  const kinds = new Set(named.map(c => c.name));
+  $("a-kinds").textContent = num(kinds.size);
+  $("a-kinds-f").textContent = "kinds of fish and items";
   const muts = named.filter(c => c.mutation).length;
-  el.innerHTML = `<dl><dt>Catches logged</dt><dd>${num(all.length)} since ${day(all[0].t)}</dd>
-    <dt>Different fish</dt><dd>${num(Object.keys(species).length)}</dd>
-    <dt>Mutated</dt><dd>${num(muts)} (${named.length ? (muts / named.length * 100).toFixed(1) : 0}%)</dd></dl><div style="height:10px"></div><div id="allr"></div>
-    <h2 style="margin-top:14px">Most caught</h2><div id="allf"></div>`;
-  bars($("allr"), Object.keys(byR).sort((a, c) => rank(c) - rank(a)).map(k => ({ label: k, n: byR[k], color: RCOLOR[k] || "#57606a" })));
-  bars($("allf"), Object.keys(species).sort((a, c) => species[c] - species[a]).slice(0, 10)
-    .map(k => ({ label: k, n: species[k], color: RCOLOR[rarityOf[k]] || "var(--bar)" })));
-  const best = named.slice().sort((x, y) => {
-    const rx = rank(x.rarity || rarityOf[x.name]), ry = rank(y.rarity || rarityOf[y.name]);
-    return (ry - rx) || ((y.mutation ? 1 : 0) - (x.mutation ? 1 : 0)) || ((y.weight || 0) - (x.weight || 0)); }).slice(0, 25);
-  $("best").innerHTML = best.map(c => `<tr><td>${day(c.t)}</td><td class="name">${fishLabel(c)}</td><td>${tag(c.rarity || rarityOf[c.name])}</td>
-    <td>${kg(c.weight)}</td><td class="mut">${esc(c.mutation || "")}</td></tr>`).join("");
+  $("a-mut").textContent = compact(muts);
+  $("a-mut-f").textContent = named.length ? (muts / named.length * 100).toFixed(1) + "% of catches" : "";
+  const sh = named.filter(c => c.shiny).length, sp = named.filter(c => c.sparkling).length;
+  $("a-fx").textContent = `${num(sh)} / ${num(sp)}`;
+  $("a-fx-f").textContent = named.length ? `${((sh + sp) / named.length * 100).toFixed(2)}% of catches` : "";
+  const rare = best(named, oddsOf);
+  $("a-rare").textContent = rare ? rare.odds : "-";
+  $("a-rare-f").textContent = rare ? `${fishText(rare)} ${DOT} ${day(rare.t)}` : "";
+  rarityBars($("a-b-rarity"), named); fishBars($("a-b-fish"), named); mutBars($("a-b-mut"), named);
+  const top = named.filter(c => oddsOf(c) > 0).sort((x, y) => oddsOf(y) - oddsOf(x) || (y.weight || 0) - (x.weight || 0)).slice(0, 25);
+  if (!top.length) {
+    const tr = el("tr"), td = el("td", "empty", "no odds logged yet"); td.colSpan = 7; tr.append(td); kids($("best"), [tr]);
+  } else kids($("best"), top.map(c => { const tr = catchRow(c, day, t => new Date(t * 1000).toLocaleDateString([], { month: "short", day: "numeric" }), "all"); tr.append(el("td", "muted hide-sm where", c.spot || "")); return tr; }));
 }
 
+function setLive(state, text) { $("live").dataset.s = state; $("live-t").textContent = text; }
+function banner(kind, title, detail) {
+  const b = $("banner");
+  b.className = "banner" + (kind ? " on " + kind : "");
+  $("banner-t").textContent = title || ""; $("banner-d").textContent = detail || "";
+  $("banner-i").textContent = kind === "crit" || kind === "warn" ? "!" : "i";
+}
+
+function renderHead() {
+  if (!S) return;
+  $("who").textContent = `${S.player || ""} ${DOT} v${S.v || "?"}`;
+  $("phase").textContent = S.autoFish ? [S.phase, S.note].filter(Boolean).join(` ${DOT} `) : "Auto fish is off";
+  $("st-sub").textContent = S.userId ? `${S.player} ${DOT} started ${clock(S.startedAt, false)}` : "";
+  const d = S.disconnect;
+  if (d) banner("crit", `${d.title || "Disconnected"} at ${clock(d.t)}`, [d.message, S.alertStatus].filter(Boolean).join(" \u2014 "));
+  else if (age >= 60) banner("warn", `FischHub hasn't updated for ${dur(age)}`, "Roblox or Matcha may have closed, or the game froze. The numbers below are from the last update.");
+  else banner(null);
+}
+
+// ---------------------------------------------------------------- polling
+let badReads = 0;
 async function pollState() {
+  let j = null;
   try {
     const res = await fetch("/state", { cache: "no-store" });
-    const j = await res.json();
-    const live = $("live");
-    if (j.missing) { live.className = "pill dead"; live.textContent = "no data - is FischHub running with its dashboard feed on?"; }
-    else if (j.state && j.state.unloaded) { live.className = "pill dead"; live.textContent = "FischHub unloaded"; }
-    else {
-      S = j.state;
-      live.className = "pill " + (j.age < 8 ? "live" : j.age < 60 ? "stale" : "dead");
-      live.textContent = j.age < 8 ? "live" : `last update ${dur(j.age)} ago`;
-      render();
+    try { j = await res.json(); badReads = 0; } catch (e) { // usually the file caught mid-write
+      if (++badReads >= 5) setLive("dead", "state file unreadable");
+      setTimeout(pollState, 1000); return;
     }
-  } catch (e) { /* the file was mid-write; next poll */ }
+  } catch (e) { setLive("dead", "helper not reachable"); setTimeout(pollState, 2000); return; }
+  try {
+    if (j.missing) {
+      setLive("dead", "no data");
+      if (!S) banner("warn", "Waiting for FischHub", "Load FischHub in Matcha and keep Settings \u203a Dashboard feed on. This page fills in by itself.");
+    } else if (j.state && j.state.unloaded) {
+      setLive("dead", "unloaded");
+      banner("warn", `FischHub was unloaded at ${clock(j.state.t)}`, "Load it again in Matcha to pick up where you left off.");
+    } else if (j.state) {
+      S = j.state; age = j.age || 0;
+      if (S.disconnect) setLive("dead", "disconnected");
+      else setLive(age < 8 ? "live" : age < 60 ? "stale" : "dead", age < 8 ? "live" : `${dur(age)} ago`);
+      renderHead(); renderSession(); renderStatus();
+    }
+  } catch (e) { console.warn(e); }
   setTimeout(pollState, 2000);
 }
 
@@ -415,34 +993,37 @@ async function pollCatches() {
   try {
     const res = await fetch("/catches?from=" + allFrom, { cache: "no-store" });
     const next = Number(res.headers.get("X-Next") || 0);
-    const text = await res.text();
-    if (next < allFrom) { all = []; }
-    const cut = text.lastIndexOf("\n");
+    const buf = new Uint8Array(await res.arrayBuffer());
+    if (next < allFrom) { all = []; allFrom = 0; }
+    const cut = buf.lastIndexOf(10);
     if (cut >= 0) {
-      text.slice(0, cut).split("\n").forEach(l => { try { if (l.trim()) all.push(JSON.parse(l)); } catch (e) {} });
-      allFrom = (next < allFrom ? 0 : allFrom) + new TextEncoder().encode(text.slice(0, cut + 1)).length;
-    }
-    renderAll();
+      new TextDecoder().decode(buf.subarray(0, cut)).split("\n").forEach(l => { try { if (l.trim()) all.push(JSON.parse(l)); } catch (e) {} });
+      allFrom += cut + 1;
+      renderAllTime(); renderSession();
+    } else if (!all.length) renderAllTime();
   } catch (e) {}
   setTimeout(pollCatches, 10000);
 }
 
 async function pollInfo() {
-  try { const j = await (await fetch("/fishinfo", { cache: "no-store" })).json(); rarityOf = j.rarity || {}; render(); renderAll(); } catch (e) {}
+  try {
+    const j = await (await fetch("/fishinfo", { cache: "no-store" })).json();
+    rarityOf = j.rarity || {}; infoVer++;
+    renderSession(); renderAllTime();
+  } catch (e) {}
   setTimeout(pollInfo, 60000);
 }
 
 async function helper(on) {
   try {
     const j = await (await fetch("/helper" + (on == null ? "" : "?afk=" + (on ? 1 : 0)), { cache: "no-store" })).json();
-    $("helper").checked = !!j.afk; $("helper-s").textContent = "AFK helper: " + (j.afkNote || "");
-    $("watch-s").textContent = "Disconnect watchdog: " + (j.watch || "");
-    $("shot-s").textContent = "Screenshots: " + (j.shot || "");
+    $("helper").checked = !!j.afk;
+    kids($("hp"), [["AFK helper", j.afkNote], ["Disconnect watchdog", j.watch], ["Screenshots", j.shot]]
+      .flatMap(([k, v]) => [el("dt", null, k), el("dd", null, v || "-")]));
   } catch (e) {}
 }
 $("helper").addEventListener("change", e => helper(e.target.checked));
 setInterval(() => helper(), 5000);
-window.addEventListener("resize", render);
 helper(); pollInfo(); pollState(); pollCatches();
 </script>
 </body>
