@@ -75,6 +75,12 @@ Double-click it and leave its window open while you play. It only listens on you
   with a live chart, C$/XP gained, the fish on the line, and your rarest and heaviest catch. It also
   has a filterable list of every fish (size, rarity, mutation, weight, odds), rarity and mutation
   breakdowns, and all-time stats from every session. Dark and light themes.
+- **Settings from the page:** turn Auto Fish and Instant Catch on or off, and change every FischHub
+  setting (fishing, webhook, totems, anti-AFK). Changes apply right away and are saved, just like the
+  menu. You can also paste your webhook URL there, since Matcha's menus can't paste.
+- **Roblox view:** a live picture of your Roblox window on the page, every 3 s (you can pause it). It
+  only ever captures the Roblox window, never anything else on your screen. Only the page the helper
+  opens can change settings or take pictures; other websites can't.
 - **Webhook edits:** keeps updating one Discord message instead of posting a new one each time.
 - **Screenshots:** with **Screenshot in webhook** on (Webhook tab), each message gets a picture of your
   Roblox window. It only ever captures Roblox.

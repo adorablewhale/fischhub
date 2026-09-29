@@ -11,7 +11,7 @@ exit /b
 #>
 # ---------------------------------------------------------------- PowerShell part
 # Everything FischHub needs outside Matcha, in one window. It listens on 127.0.0.1:47210 (this PC
-# only) and does four things:
+# only) and does five things:
 #  1. Webhook relay. Discord only edits a webhook message with PATCH, and Matcha can only send
 #     GET/POST, so FischHub posts edits here and this sends the PATCH. With ?shot=1 it attaches a
 #     screenshot of the Roblox window (only Roblox, never another window). It forwards nothing
@@ -27,6 +27,11 @@ exit /b
 #     and NOT focused (its own anti-AFK keys can't reach it), this briefly brings Roblox to the
 #     front, taps O then I (camera zoom out/in) and gives focus back - only after you've been off
 #     the keyboard and mouse for 3 s, at most once a minute, never while Roblox is minimized.
+#  5. Settings and a live view from the page. A change made on the page is written to
+#     FischHub\dashboard\commands.txt and FischHub applies it like a click in its menu. The Roblox
+#     view on the page is a picture of the Roblox window only (see the screenshot note below).
+#     Both need the page's key, which is new every time this window starts, so another website
+#     open in your browser can't change settings or take pictures.
 # Webhook URLs and tokens are never printed. Drag your Matcha workspace folder onto this file if
 # it isn't C:\matcha\workspace.
 
@@ -45,6 +50,9 @@ $CatchFile = Join-Path $Dir 'dashboard\catches.txt'
 $InfoFile = Join-Path $Dir 'fishinfo.json'
 $SettingsFile = Join-Path $Dir 'settings.json'
 $HelperFile = Join-Path $Dir 'dashboard\afk-helper.txt'
+$CmdFile = Join-Path $Dir 'dashboard\commands.txt'
+$CtlFile = Join-Path $Dir 'dashboard\controls.json'
+$Token = [Guid]::NewGuid().ToString('N')
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 Add-Type @'
@@ -87,9 +95,10 @@ public static class FHWin {
 }
 '@
 
-# Screenshots of the Roblox window. PrintWindow with PW_RENDERFULLCONTENT captures a DirectX
-# window even behind other windows; if that comes back black, the screen is copied only when
-# Roblox is the window in front, so nothing else on your screen ends up in Discord.
+# Screenshots of the Roblox window, and nothing else. PrintWindow with PW_RENDERFULLCONTENT asks
+# Windows for Roblox's own picture (client area only), which works even behind other windows and
+# never includes them. Only if that comes back black is the screen copied, and only when Roblox is
+# the window in front AND no other window (an overlay, a popup, a notification) overlaps it.
 $script:CanShot = $false
 try {
   Add-Type -ReferencedAssemblies System.Drawing @'
@@ -106,7 +115,28 @@ public static class FHShot {
   [DllImport("user32.dll")] static extern bool PrintWindow(IntPtr h, IntPtr hdc, uint flags);
   [DllImport("user32.dll")] static extern bool IsIconic(IntPtr h);
   [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
+  [DllImport("user32.dll")] static extern IntPtr GetWindow(IntPtr h, uint cmd);
+  [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
+  [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr h, out RECT r);
+  [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+  [DllImport("dwmapi.dll")] static extern int DwmGetWindowAttribute(IntPtr h, int attr, out int value, int size);
   public static string Why = "";
+  // True when a visible window of another program sits above Roblox over the given screen area.
+  static bool Covered(IntPtr h, int l, int t, int r, int b) {
+    uint mine; GetWindowThreadProcessId(h, out mine);
+    for (IntPtr w = GetWindow(h, 3); w != IntPtr.Zero; w = GetWindow(w, 3)) { // 3 = GW_HWNDPREV, the next window up
+      if (!IsWindowVisible(w)) continue;
+      int cloaked = 0;
+      if (DwmGetWindowAttribute(w, 14, out cloaked, 4) == 0 && cloaked != 0) continue; // 14 = DWMWA_CLOAKED
+      uint pid; GetWindowThreadProcessId(w, out pid);
+      if (pid == mine) continue;
+      RECT x;
+      if (!GetWindowRect(w, out x)) continue;
+      if (x.R <= l || x.L >= r || x.B <= t || x.T >= b) continue;
+      return true;
+    }
+    return false;
+  }
   static bool Blank(Bitmap b) {
     for (int y = 1; y < 10; y++) for (int x = 1; x < 10; x++) {
       Color c = b.GetPixel(b.Width * x / 10, b.Height * y / 10);
@@ -129,9 +159,10 @@ public static class FHShot {
         bool ok = PrintWindow(h, dc, 3); // PW_CLIENTONLY | PW_RENDERFULLCONTENT
         g.ReleaseHdc(dc);
         if (!ok || Blank(bmp)) {
-          if (GetForegroundWindow() != h) { Why = "Roblox was behind another window and couldn't be captured"; return null; }
+          if (GetForegroundWindow() != h) { Why = "Roblox came back black and isn't the window in front, so nothing was captured"; return null; }
           POINT p = new POINT();
           ClientToScreen(h, ref p);
+          if (Covered(h, p.X, p.Y, p.X + w, p.Y + ht)) { Why = "another window is over Roblox, so nothing was captured"; return null; }
           g.CopyFromScreen(p.X, p.Y, 0, 0, new Size(w, ht));
         }
       }
@@ -150,6 +181,9 @@ public static class FHShot {
   [void][FHWin]::SetProcessDPIAware()
   $script:CanShot = $true
 } catch { }
+$script:ShotWhy = ''
+$script:LiveShot = $null
+$script:LiveShotAt = [DateTime]::MinValue
 $script:ShotNote = if ($script:CanShot) { 'ready (turn on "Screenshot in webhook" in FischHub)' } else { 'not available on this PC' }
 
 $Html = @'
@@ -332,6 +366,60 @@ td.odds.hi { color: var(--ink); font-weight: 600; }
 .bval { font-size: 13px; font-variant-numeric: tabular-nums; color: var(--ink); min-width: 28px; text-align: right; }
 .bnote { color: var(--muted); font-size: 12px; margin-top: 6px; padding-left: 4px; }
 
+/* roblox view */
+.shotbox { position: relative; aspect-ratio: 16 / 9; background: var(--page); border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+  display: grid; place-items: center; }
+.shotbox img { width: 100%; height: 100%; object-fit: contain; display: block; cursor: zoom-in; }
+.shotbox:fullscreen { border: 0; border-radius: 0; background: #000; }
+.shotbox:fullscreen img { cursor: zoom-out; }
+.shot-empty { color: var(--muted); font-size: 13px; text-align: center; padding: 0 24px; max-width: 460px; }
+.shotbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 10px; }
+.shotbar .muted { font-size: 12px; flex: 1 1 220px; }
+.btn { background: var(--raised); border: 1px solid var(--border); border-radius: 8px; padding: 5px 12px; cursor: pointer; font-size: 13px; color: var(--ink); }
+.btn:hover:not(:disabled) { border-color: var(--base); }
+.btn:disabled { opacity: .5; cursor: default; }
+.btn.primary { background: var(--ink); color: var(--page); border-color: var(--ink); }
+
+/* settings */
+.ctl { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 16px; align-items: center; padding: 11px 0; border-top: 1px solid var(--grid); }
+.card h3 + .ctl { border-top: 0; padding-top: 2px; }
+.ctl-t b { display: block; font-weight: 600; font-size: 13px; }
+.ctl-t span { display: block; color: var(--muted); font-size: 12px; }
+.ctl-c { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+.ctl.busy .ctl-c { opacity: .55; }
+.ctl input[type=range] { width: 170px; accent-color: var(--s1); }
+.ctl output { min-width: 70px; text-align: right; font-variant-numeric: tabular-nums; font-size: 13px; }
+.ctl input[type=text], .ctl input[type=password] { width: 220px; max-width: 100%; background: var(--page); color: var(--ink); border: 1px solid var(--border);
+  border-radius: 8px; padding: 5px 9px; font: inherit; font-size: 13px; }
+.ctl input[type=text]:focus, .ctl input[type=password]:focus { outline: 2px solid var(--s1); outline-offset: 0; border-color: transparent; }
+.ctl .state { font-size: 12px; color: var(--muted); }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 12px; border-top: 1px solid var(--grid); }
+.switch { position: relative; display: inline-flex; cursor: pointer; }
+.switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.switch .knob, .toggle .knob { width: 36px; height: 20px; border-radius: 999px; background: var(--base); position: relative; flex: none; transition: background .15s; }
+.switch .knob::after, .toggle .knob::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .15s; }
+.switch input:checked + .knob, .toggle input:checked + .knob { background: var(--s1); }
+.switch input:checked + .knob::after, .toggle input:checked + .knob::after { transform: translateX(16px); }
+.switch input:focus-visible + .knob, .toggle input:focus-visible + .knob { outline: 2px solid var(--s1); outline-offset: 2px; }
+.switch input:disabled + .knob { opacity: .45; cursor: default; }
+.quick { display: grid; gap: 8px; margin-top: 14px; }
+.quick .q { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 12px; background: var(--raised); border-radius: 10px; }
+.quick .q b { font-weight: 600; font-size: 13px; }
+.quick .q.busy { opacity: .6; }
+.setnote { margin-bottom: 16px; }
+@media (max-width: 640px) {
+  .ctl { grid-template-columns: minmax(0, 1fr); }
+  .ctl.k-toggle { grid-template-columns: minmax(0, 1fr) auto; }
+  .ctl-c { justify-content: flex-start; flex-wrap: wrap; }
+  .ctl input[type=range] { flex: 1 1 140px; width: auto; }
+}
+
+/* toast */
+.toasts { position: fixed; right: 16px; bottom: 16px; z-index: 60; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; pointer-events: none; }
+.toast { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--good); border-radius: 8px; box-shadow: var(--shadow);
+  padding: 9px 12px; font-size: 13px; max-width: min(380px, calc(100vw - 32px)); overflow-wrap: anywhere; }
+.toast.err { border-left-color: var(--crit); }
+
 /* status */
 dl.st { display: grid; grid-template-columns: minmax(110px, auto) minmax(0, 1fr); gap: 0; margin: 0; }
 dl.st dt, dl.st dd { padding: 7px 0; border-top: 1px solid var(--grid); }
@@ -340,11 +428,7 @@ dl.st dd { margin: 0; overflow-wrap: anywhere; white-space: pre-line; font-size:
 dl.st dt:first-of-type, dl.st dt:first-of-type + dd { border-top: 0; }
 .toggle { display: flex; gap: 12px; align-items: flex-start; cursor: pointer; padding: 4px 0 12px; }
 .toggle input { position: absolute; opacity: 0; width: 1px; height: 1px; }
-.toggle .knob { width: 36px; height: 20px; border-radius: 999px; background: var(--base); position: relative; flex: none; transition: background .15s; margin-top: 1px; }
-.toggle .knob::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .15s; }
-.toggle input:checked + .knob { background: var(--s1); }
-.toggle input:checked + .knob::after { transform: translateX(16px); }
-.toggle input:focus-visible + .knob { outline: 2px solid var(--s1); outline-offset: 2px; }
+.toggle .knob { margin-top: 1px; }
 .toggle .tx b { display: block; font-weight: 600; }
 .toggle .tx span { color: var(--muted); font-size: 12px; }
 pre.log { margin: 10px 0 0; font: 12px/1.55 ui-monospace, "Cascadia Mono", Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere;
@@ -371,7 +455,7 @@ pre.log { margin: 10px 0 0; font: 12px/1.55 ui-monospace, "Cascadia Mono", Conso
     <span class="live" id="live" data-s="dead"><span class="dot"></span><span id="live-t">connecting</span></span>
     <span class="phase" id="phase"></span>
     <nav aria-label="Sections">
-      <a href="#session">Session</a><a href="#alltime">All time</a><a href="#status">Status</a>
+      <a href="#session">Session</a><a href="#settings">Settings</a><a href="#alltime">All time</a><a href="#status">Status</a>
       <button class="iconbtn" id="theme" type="button" title="Switch theme" aria-label="Switch theme">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>
       </button>
@@ -387,6 +471,7 @@ pre.log { margin: 10px 0 0; font: 12px/1.55 ui-monospace, "Cascadia Mono", Conso
         <div class="eyebrow">Fish this session</div>
         <div class="big num" id="h-fish">-</div>
         <div id="h-kv"></div>
+        <div class="quick" id="quick"></div>
       </div>
       <div>
         <div class="charthead"><span class="muted" id="ch-fish-l">Total over time</span>
@@ -404,10 +489,22 @@ pre.log { margin: 10px 0 0; font: 12px/1.55 ui-monospace, "Cascadia Mono", Conso
       <div class="card tile"><div class="k">Instant catch</div><div class="v" id="t-ic">-</div><div class="f" id="t-ic-f"></div></div>
     </div>
 
-    <div class="hls">
-      <div class="card hl"><div class="k"><span class="pulse" id="reel-dot" hidden></span>On the line</div><div class="v" id="hl-reel">-</div><div class="s" id="hl-reel-s"></div></div>
-      <div class="card hl"><div class="k">Rarest this session</div><div class="v num" id="hl-rare">-</div><div class="s" id="hl-rare-s"></div></div>
-      <div class="card hl"><div class="k">Heaviest this session</div><div class="v num" id="hl-heavy">-</div><div class="s" id="hl-heavy-s"></div></div>
+    <div class="grid" style="margin-bottom:16px">
+      <div class="card c8">
+        <h3>Roblox <span class="aside" id="shot-aside"></span></h3>
+        <div class="shotbox" id="shot-box"><img id="shot-img" alt="Your Roblox window" hidden><div class="shot-empty" id="shot-empty">Loading a picture of your Roblox window&hellip;</div></div>
+        <div class="shotbar">
+          <div class="seg" id="shot-mode" role="group" aria-label="Roblox view"><button type="button" data-m="live" aria-pressed="true">Live</button><button type="button" data-m="paused" aria-pressed="false">Paused</button></div>
+          <button class="btn" type="button" id="shot-refresh">Refresh</button>
+          <button class="btn" type="button" id="shot-full">Full screen</button>
+          <span class="muted">Only the Roblox window is captured, straight from Windows. Other windows on your screen never are.</span>
+        </div>
+      </div>
+      <div class="stack c4">
+        <div class="card hl"><div class="k"><span class="pulse" id="reel-dot" hidden></span>On the line</div><div class="v" id="hl-reel">-</div><div class="s" id="hl-reel-s"></div></div>
+        <div class="card hl"><div class="k">Rarest this session</div><div class="v num" id="hl-rare">-</div><div class="s" id="hl-rare-s"></div></div>
+        <div class="card hl"><div class="k">Heaviest this session</div><div class="v num" id="hl-heavy">-</div><div class="s" id="hl-heavy-s"></div></div>
+      </div>
     </div>
 
     <div class="grid">
@@ -435,6 +532,12 @@ pre.log { margin: 10px 0 0; font: 12px/1.55 ui-monospace, "Cascadia Mono", Conso
         <details class="twin" id="tw-xp"><summary>Show data</summary><div class="wrap"></div></details>
       </div>
     </div>
+  </section>
+
+  <section class="block" id="settings">
+    <div class="sechead"><h2>Settings</h2><span class="sub">changes apply in FischHub right away and are saved, just like the menu</span></div>
+    <div class="banner setnote" id="set-note"><span class="ic">i</span><div><b id="set-note-t">Waiting for FischHub</b><div class="d" id="set-note-d"></div></div></div>
+    <div class="grid" id="set-grid"></div>
   </section>
 
   <section class="block" id="alltime">
@@ -473,6 +576,7 @@ pre.log { margin: 10px 0 0; font: 12px/1.55 ui-monospace, "Cascadia Mono", Conso
   </section>
 </main>
 <div class="tip" id="tip" role="tooltip"></div>
+<div class="toasts" id="toasts" role="status" aria-live="polite"></div>
 <script>
 "use strict";
 const RARITY = ["Trash","Common","Uncommon","Unusual","Rare","Legendary","Mythical","Exotic","Secret","Divine Secret","Apex",
@@ -961,6 +1065,219 @@ function renderHead() {
   else banner(null);
 }
 
+// ---------------------------------------------------------------- settings (sent to FischHub through the helper)
+const TOKEN = "__FH_TOKEN__";
+let CTL = null, ctlStamp = null;
+const views = new Map();   // setting key -> functions that show a value
+const pend = new Map();    // setting key (or "do:<action>") -> { id, t, label, key }
+const busyEls = new Map(); // setting key -> elements dimmed while a change is on its way
+
+function toast(text, bad) {
+  const t = el("div", "toast" + (bad ? " err" : ""), text);
+  $("toasts").append(t);
+  setTimeout(() => t.remove(), bad ? 6000 : 3500);
+}
+async function post(body) {
+  const res = await fetch("/cmd", { method: "POST", headers: { "Content-Type": "application/json", "X-FH-Token": TOKEN }, body: JSON.stringify(body) });
+  let j = {};
+  try { j = await res.json(); } catch (e) {}
+  if (!res.ok || !j.id) throw new Error(j.error || "the helper said " + res.status);
+  return j.id;
+}
+function view(key, fn) { if (!views.has(key)) views.set(key, []); views.get(key).push(fn); }
+function busy(key, elx) { if (!busyEls.has(key)) busyEls.set(key, []); busyEls.get(key).push(elx); }
+function setBusy(key, on) { (busyEls.get(key) || []).forEach(e => e.classList.toggle("busy", on)); }
+const fmtVal = (c, v) => c.kind === "slider" ? `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 1 })} ${c.unit || ""}`.trim() : String(v);
+
+async function change(c, value) {
+  if (c.risk && value === true && !confirm(`${c.label}\n\n${c.risk}\n\nTurn it on?`)) { syncControls(true); return; }
+  const key = c.key;
+  pend.set(key, { id: null, t: Date.now(), label: c.label, key });
+  setBusy(key, true);
+  try {
+    pend.get(key).id = await post({ set: key, value });
+  } catch (e) {
+    pend.delete(key); setBusy(key, false); syncControls(true);
+    toast(`${c.label}: ${e.message}`, true);
+  }
+}
+async function act(a) {
+  const key = "do:" + a.key;
+  if (pend.has(key)) return;
+  pend.set(key, { id: null, t: Date.now(), label: a.label, key });
+  setBusy(key, true);
+  try { pend.get(key).id = await post({ do: a.key }); }
+  catch (e) { pend.delete(key); setBusy(key, false); toast(`${a.label}: ${e.message}`, true); }
+}
+// FischHub reports each change it applied (state.cmd.results); anything it doesn't pick up in 15 s is dropped.
+function checkResults() {
+  const res = arr(S && S.cmd && S.cmd.results);
+  for (const [key, p] of pend) {
+    if (!p.id) continue;
+    const r = res.find(x => String(x.id) === String(p.id));
+    if (r && typeof r.ok === "boolean") {
+      pend.delete(key); setBusy(key, false);
+      const msg = r.msg === "true" ? "on" : r.msg === "false" ? "off" : (r.msg || (r.ok ? "done" : "failed"));
+      toast(`${p.label}: ${msg}`, !r.ok);
+    } else if (!r && Date.now() - p.t > 15000) {
+      pend.delete(key); setBusy(key, false);
+      toast(`${p.label}: FischHub didn't pick this up. Is it running, with Settings \u203a Dashboard feed on?`, true);
+    }
+  }
+}
+function syncControls(force) {
+  if (!S || !S.settings) return;
+  for (const [key, fns] of views) {
+    if (pend.has(key) && !force) continue;
+    fns.forEach(fn => fn(S.settings[key]));
+  }
+}
+
+function makeControl(c, compact) {
+  const box = el("div", "ctl-c");
+  if (c.kind === "toggle") {
+    const lab = el("label", "switch"), inp = el("input"), knob = el("span", "knob");
+    inp.type = "checkbox"; inp.setAttribute("aria-label", c.label);
+    inp.addEventListener("change", () => change(c, inp.checked));
+    lab.append(inp, knob); box.append(lab);
+    view(c.key, v => { inp.checked = v === true; });
+  } else if (c.kind === "choice") {
+    const seg = el("div", "seg"); seg.setAttribute("role", "group"); seg.setAttribute("aria-label", c.label);
+    const btns = arr(c.options).map(o => { const b = el("button", null, o); b.type = "button";
+      b.addEventListener("click", () => { if (b.getAttribute("aria-pressed") !== "true") { btns.forEach(x => x.setAttribute("aria-pressed", String(x === b))); change(c, o); } });
+      return b; });
+    seg.append(...btns); box.append(seg);
+    view(c.key, v => btns.forEach(b => b.setAttribute("aria-pressed", String(b.textContent === v))));
+  } else if (c.kind === "slider") {
+    const r = el("input"), out = el("output");
+    r.type = "range"; r.min = c.min; r.max = c.max; r.step = c.step; r.setAttribute("aria-label", c.label);
+    let dragging = false;
+    r.addEventListener("pointerdown", () => { dragging = true; });
+    r.addEventListener("input", () => { out.textContent = fmtVal(c, r.value); });
+    r.addEventListener("change", () => { dragging = false; change(c, Number(r.value)); });
+    box.append(r, out);
+    view(c.key, v => { if (!dragging && isNum(v)) { r.value = v; out.textContent = fmtVal(c, v); } });
+  } else {
+    const inp = el("input"), save = el("button", "btn", "Save"), state = el("span", "state");
+    const secret = c.kind === "secret";
+    inp.type = secret ? "password" : "text"; inp.autocomplete = "off"; inp.spellcheck = false;
+    inp.placeholder = secret ? "paste a new webhook url" : (c.placeholder || "");
+    inp.setAttribute("aria-label", c.label);
+    save.type = "button";
+    const send = () => { change(c, inp.value.trim()); if (secret) inp.value = ""; };
+    save.addEventListener("click", send);
+    inp.addEventListener("keydown", e => { if (e.key === "Enter") send(); });
+    box.append(inp, save);
+    if (secret) {
+      box.append(state);
+      view(c.key, v => { state.textContent = v === "set" ? "saved" : v === "invalid" ? "not a webhook url" : "not set"; });
+    } else view(c.key, v => { if (document.activeElement !== inp) inp.value = v == null ? "" : String(v); });
+  }
+  return box;
+}
+
+function buildControls() {
+  views.clear(); busyEls.clear();
+  const grid = $("set-grid"), quick = $("quick");
+  if (!CTL || !arr(CTL.controls).length) { kids(grid, []); kids(quick, []); return; }
+  const groups = [];
+  arr(CTL.controls).forEach(c => { let g = groups.find(x => x.name === c.group); if (!g) groups.push(g = { name: c.group, items: [] }); g.items.push(c); });
+  kids(grid, groups.map(g => {
+    const card = el("div", "card c6");
+    card.append(el("h3", null, g.name));
+    g.items.forEach(c => {
+      const row = el("div", "ctl k-" + c.kind), t = el("div", "ctl-t");
+      t.append(el("b", null, c.label));
+      if (c.help) t.append(el("span", null, c.help));
+      row.append(t, makeControl(c));
+      busy(c.key, row);
+      card.append(row);
+    });
+    const acts = arr(CTL.actions).filter(a => a.group === g.name);
+    if (acts.length) {
+      const bar = el("div", "actions");
+      acts.forEach(a => { const b = el("button", "btn", a.label); b.type = "button"; b.addEventListener("click", () => act(a)); busy("do:" + a.key, b); bar.append(b); });
+      card.append(bar);
+    }
+    return card;
+  }));
+  kids(quick, ["autoFish", "instantCatch"].map(k => arr(CTL.controls).find(c => c.key === k)).filter(Boolean).map(c => {
+    const q = el("div", "q");
+    q.append(el("b", null, c.label), makeControl(c).firstChild);
+    busy(c.key, q);
+    return q;
+  }));
+  syncControls(true);
+  setLiveControls();
+}
+async function loadControls() {
+  try {
+    const j = await (await fetch("/controls", { cache: "no-store" })).json();
+    CTL = j && Array.isArray(j.controls) ? j : null;
+  } catch (e) { CTL = null; }
+  buildControls();
+}
+// Controls work only while FischHub is running and writing the feed.
+function setLiveControls() {
+  const live = !!(S && !S.unloaded && age < 15 && !S.disconnect);
+  document.querySelectorAll("#set-grid input, #set-grid button, #quick input").forEach(x => { x.disabled = !live; });
+  const note = $("set-note");
+  let t = "", d = "";
+  if (!S) { t = "Waiting for FischHub"; d = "Load FischHub in Matcha with Settings \u203a Dashboard feed on, and its settings show up here."; }
+  else if (!S.settings) { t = "Update FischHub to change settings here"; d = `This is FischHub v${S.v || "?"}; changing settings from this page needs 2.3.0 or newer.`; }
+  else if (!CTL) { t = "Loading FischHub's settings"; d = ""; }
+  else if (!live) { t = "FischHub isn't running right now"; d = "Changes need FischHub loaded in Matcha and connected to the game."; }
+  note.className = "banner setnote" + (t ? " on" : "");
+  $("set-note-t").textContent = t; $("set-note-d").textContent = d;
+}
+
+// ---------------------------------------------------------------- Roblox view (a picture of the Roblox window only, from the helper)
+let shotLive = true, shotBusy = false, shotAt = 0, shotUrl = null;
+try { shotLive = localStorage.getItem("fh-shot") !== "paused"; } catch (e) {}
+function shotMode(live) {
+  shotLive = live;
+  try { localStorage.setItem("fh-shot", live ? "live" : "paused"); } catch (e) {}
+  document.querySelectorAll("#shot-mode button").forEach(b => b.setAttribute("aria-pressed", String((b.dataset.m === "live") === live)));
+  if (live) shot();
+}
+function shotEmpty(text) {
+  $("shot-img").hidden = true;
+  const e = $("shot-empty"); e.hidden = false; e.textContent = text;
+}
+async function shot() {
+  if (shotBusy) return;
+  shotBusy = true;
+  try {
+    const w = Math.max(320, Math.min(1920, Math.round($("shot-box").clientWidth * (window.devicePixelRatio || 1))));
+    const res = await fetch("/shot?w=" + w, { headers: { "X-FH-Token": TOKEN }, cache: "no-store" });
+    if (res.ok && (res.headers.get("Content-Type") || "").startsWith("image/")) {
+      const url = URL.createObjectURL(await res.blob()), img = $("shot-img"), old = shotUrl;
+      shotUrl = url;
+      img.onload = () => { if (old) URL.revokeObjectURL(old); };
+      img.src = url; img.hidden = false; $("shot-empty").hidden = true;
+      shotAt = Date.now();
+    } else {
+      let j = {};
+      try { j = await res.json(); } catch (e) {}
+      shotEmpty(j.why ? "No picture: " + j.why + "." : "No picture right now.");
+    }
+  } catch (e) { shotEmpty("The helper isn't reachable."); }
+  shotBusy = false;
+  shotAside();
+}
+function shotAside() {
+  const s = shotAt ? Math.round((Date.now() - shotAt) / 1000) : null;
+  $("shot-aside").textContent = s == null ? "" : (s < 2 ? "just now" : `${s}s ago`) + (shotLive ? "" : " \u00b7 paused");
+}
+document.querySelectorAll("#shot-mode button").forEach(b => b.addEventListener("click", () => shotMode(b.dataset.m === "live")));
+$("shot-refresh").addEventListener("click", () => shot());
+const fullShot = () => { const box = $("shot-box");
+  if (document.fullscreenElement) document.exitFullscreen(); else if (box.requestFullscreen) box.requestFullscreen(); };
+$("shot-full").addEventListener("click", fullShot);
+$("shot-img").addEventListener("click", fullShot);
+setInterval(() => { if (shotLive && !document.hidden) shot(); else shotAside(); }, 3000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden && shotLive) shot(); });
+
 // ---------------------------------------------------------------- polling
 let badReads = 0;
 async function pollState() {
@@ -978,12 +1295,15 @@ async function pollState() {
       if (!S) banner("warn", "Waiting for FischHub", "Load FischHub in Matcha and keep Settings \u203a Dashboard feed on. This page fills in by itself.");
     } else if (j.state && j.state.unloaded) {
       setLive("dead", "unloaded");
+      if (S) { S.unloaded = true; setLiveControls(); }
       banner("warn", `FischHub was unloaded at ${clock(j.state.t)}`, "Load it again in Matcha to pick up where you left off.");
     } else if (j.state) {
       S = j.state; age = j.age || 0;
       if (S.disconnect) setLive("dead", "disconnected");
       else setLive(age < 8 ? "live" : age < 60 ? "stale" : "dead", age < 8 ? "live" : `${dur(age)} ago`);
       renderHead(); renderSession(); renderStatus();
+      if (S.controls && S.controls !== ctlStamp) { ctlStamp = S.controls; loadControls(); }
+      checkResults(); syncControls(); setLiveControls();
     }
   } catch (e) { console.warn(e); }
   setTimeout(pollState, 2000);
@@ -1016,7 +1336,7 @@ async function pollInfo() {
 
 async function helper(on) {
   try {
-    const j = await (await fetch("/helper" + (on == null ? "" : "?afk=" + (on ? 1 : 0)), { cache: "no-store" })).json();
+    const j = await (await fetch("/helper" + (on == null ? "" : "?afk=" + (on ? 1 : 0)), { cache: "no-store", headers: { "X-FH-Token": TOKEN } })).json();
     $("helper").checked = !!j.afk;
     kids($("hp"), [["AFK helper", j.afkNote], ["Disconnect watchdog", j.watch], ["Screenshots", j.shot]]
       .flatMap(([k, v]) => [el("dt", null, k), el("dd", null, v || "-")]));
@@ -1024,12 +1344,13 @@ async function helper(on) {
 }
 $("helper").addEventListener("change", e => helper(e.target.checked));
 setInterval(() => helper(), 5000);
+shotMode(shotLive); setLiveControls();
 helper(); pollInfo(); pollState(); pollCatches();
 </script>
 </body>
 </html>
 '@
-$HtmlBytes = [Text.Encoding]::UTF8.GetBytes($Html)
+$HtmlBytes = [Text.Encoding]::UTF8.GetBytes($Html.Replace('__FH_TOKEN__', $Token))
 
 function Say([string]$text, [string]$color = 'Gray') {
   Write-Host ("  " + (Get-Date -Format 'HH:mm:ss') + "  " + $text) -ForegroundColor $color
@@ -1104,19 +1425,78 @@ function Json-Str([string]$s) {
   return '"' + $s.Replace('\', '\\').Replace('"', '\"').Replace("`r", '').Replace("`n", '\n') + '"'
 }
 
+# Requests from the page must come from this PC's own address (not a website that points its name at
+# 127.0.0.1) and, for anything that changes something or takes a picture, carry the page's key.
+function Is-Local($headers) {
+  $h = [string]$headers['host']
+  if ($h -and $h -notmatch '^(127\.0\.0\.1|localhost)(:\d+)?$') { return $false }
+  $o = [string]$headers['origin']
+  if ($o -and $o -notmatch '^http://(127\.0\.0\.1|localhost)(:\d+)?$') { return $false }
+  return $true
+}
+function Has-Key($headers) { return (Is-Local $headers) -and ([string]$headers['x-fh-token'] -eq $Token) }
+
+# Page changes waiting for FischHub. Each is one JSON line in commands.txt; FischHub reports the
+# last one it read (cmd.ack in state.json) and those are dropped, as is anything older than 2 min.
+$script:Cmds = New-Object System.Collections.ArrayList
+$script:CmdLast = [long]0
+$script:CmdAck = [long]0
+function Write-Commands {
+  $keep = @($script:Cmds | Where-Object { $_.id -gt $script:CmdAck -and ((Get-Date) - $_.at).TotalSeconds -lt 120 })
+  $script:Cmds = New-Object System.Collections.ArrayList
+  foreach ($c in $keep) { [void]$script:Cmds.Add($c) }
+  $text = ($keep | ForEach-Object { $_.line + "`n" }) -join ''
+  try { [IO.File]::WriteAllText($CmdFile, $text, (New-Object Text.UTF8Encoding $false)) } catch { }
+}
+function Add-Command($stream, $headers, [byte[]]$body) {
+  if (-not (Has-Key $headers)) { Send-Text $stream 403 'application/json' '{"error":"reload the page"}'; return }
+  $j = $null
+  try { $j = [Text.Encoding]::UTF8.GetString($body) | ConvertFrom-Json } catch { }
+  $part = $null
+  if ($j -and $j.set -is [string] -and $j.set -match '^[A-Za-z]{1,40}$') {
+    $v = $j.value
+    if ($v -is [bool]) { $val = $(if ($v) { 'true' } else { 'false' }) }
+    elseif ($v -is [int] -or $v -is [long] -or $v -is [double] -or $v -is [decimal]) { $val = $v.ToString([Globalization.CultureInfo]::InvariantCulture) }
+    elseif ($v -is [string] -and $v.Length -le 400) { $val = Json-Str ($v -replace '[\x00-\x1f]', '') }
+    else { $val = $null }
+    if ($val) { $part = '"set":' + (Json-Str $j.set) + ',"value":' + $val }
+  } elseif ($j -and $j.do -is [string] -and $j.do -match '^[A-Za-z]{1,40}$') {
+    $part = '"do":' + (Json-Str $j.do)
+  }
+  if (-not $part) { Send-Text $stream 400 'application/json' '{"error":"not a setting change"}'; return }
+  if (-not (Test-Path -LiteralPath (Split-Path $CmdFile))) { Send-Text $stream 409 'application/json' '{"error":"no FischHub dashboard folder yet - load FischHub first"}'; return }
+  $id = [Math]::Max($script:CmdLast + 1, [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())
+  $script:CmdLast = $id
+  [void]$script:Cmds.Add(@{ id = $id; at = Get-Date; line = '{"id":"' + $id + '",' + $part + '}' })
+  Write-Commands
+  Send-Text $stream 200 'application/json' ('{"id":"' + $id + '"}')
+  $what = if ($j.set -eq 'webhookUrl') { 'webhook url' } elseif ($j.set) { $j.set + ' = ' + [string]$j.value } else { $j.do }
+  Say ('page: ' + $what)
+}
+
 function Get-Roblox {
   return Get-Process -Name 'RobloxPlayerBeta' -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1
 }
 
-# A JPEG of the Roblox window, or $null (the reason goes to the page).
-function Take-Shot {
-  if (-not $script:CanShot) { $script:ShotNote = 'not available on this PC'; return $null }
-  $rb = Get-Roblox
-  if (-not $rb) { $script:ShotNote = 'skipped - no Roblox window'; return $null }
-  $img = [FHShot]::Capture($rb.MainWindowHandle, 1280)
-  if (-not $img) { $script:ShotNote = 'skipped - ' + [FHShot]::Why; return $null }
-  $script:ShotNote = 'last one ' + (Get-Date -Format 'HH:mm:ss') + ' (' + [int]($img.Length / 1024) + ' KB)'
-  return ,$img
+# A JPEG of the Roblox window, or $null with the reason in $script:ShotWhy. Webhook pictures also
+# update the note the page shows ($script:ShotNote); the page's own live view doesn't.
+function Take-Shot([int]$maxWidth = 1280, [bool]$forWebhook = $true) {
+  $img = $null
+  if (-not $script:CanShot) { $script:ShotWhy = 'screenshots are not available on this PC' }
+  else {
+    $rb = Get-Roblox
+    if (-not $rb) { $script:ShotWhy = 'no Roblox window' }
+    else {
+      $img = [FHShot]::Capture($rb.MainWindowHandle, $maxWidth)
+      if (-not $img) { $script:ShotWhy = [FHShot]::Why }
+    }
+  }
+  if ($forWebhook) {
+    $script:ShotNote = if ($img) { 'last one ' + (Get-Date -Format 'HH:mm:ss') + ' (' + [int]($img.Length / 1024) + ' KB)' }
+      elseif ($script:CanShot) { 'skipped - ' + $script:ShotWhy } else { 'not available on this PC' }
+  }
+  if ($img) { return ,$img }
+  return $null
 }
 
 # Sends a webhook request to discord. With a screenshot the body becomes multipart: the JSON as
@@ -1230,6 +1610,10 @@ function Watch-Tick {
     $st = Read-Json $StateFile
     if (-not $st) { return }
     $script:Watch.state = $st
+    if ($st.cmd -and [string]$st.cmd.ack -match '^\d+$' -and [long]$st.cmd.ack -gt $script:CmdAck) {
+      $script:CmdAck = [long]$st.cmd.ack
+      if ($script:Cmds.Count) { Write-Commands }
+    }
     $script:Watch.farming = ($st.autoFish -eq $true) -and -not $st.unloaded -and -not $st.disconnect
     if ($script:Watch.alerted) { Say 'FischHub is updating again' 'Green'; $script:Watch.alerted = $false }
     if ($st.unloaded) { $script:Watch.note = 'FischHub was unloaded' }
@@ -1315,8 +1699,10 @@ function Handle-Client($client) {
   $path = ($target -split '\?')[0]
   $query = if ($target.Contains('?')) { $target.Substring($target.IndexOf('?') + 1) } else { '' }
 
+  if ($method -eq 'POST' -and $path -eq '/cmd') { Add-Command $stream $headers $body; return }
   if ($method -eq 'POST') { Relay $stream $path $query $body; return }
   if ($method -ne 'GET') { Send-Text $stream 404 'text/plain' 'GET or POST only'; return }
+  if (-not (Is-Local $headers)) { Send-Text $stream 403 'text/plain' 'open http://127.0.0.1:47210 instead'; return }
   switch ($path) {
     { $_ -eq '/' -or $_ -eq '/index.html' } { Send $stream 200 'text/html; charset=utf-8' $HtmlBytes; return }
     '/ping' { Send-Text $stream 200 'application/json' '{"relay":"fischhub-relay","helper":"fischhub-helper"}'; return }
@@ -1335,6 +1721,24 @@ function Handle-Client($client) {
       Send $stream 200 'text/plain; charset=utf-8' $r.bytes "X-Next: $($r.size)`r`n"
       return
     }
+    '/controls' {
+      $r = Read-Shared $CtlFile
+      if (-not $r) { Send-Text $stream 200 'application/json' '{}'; return }
+      Send $stream 200 'application/json; charset=utf-8' $r.bytes
+      return
+    }
+    '/shot' {
+      if (-not (Has-Key $headers)) { Send-Text $stream 403 'application/json' '{"why":"reload the page"}'; return }
+      $w = 1280
+      if ($query -match '(^|&)w=(\d+)') { $w = [Math]::Max(320, [Math]::Min(1920, [int]$Matches[2])) }
+      if (-not $script:LiveShot -or ((Get-Date) - $script:LiveShotAt).TotalMilliseconds -ge 900) {
+        $script:LiveShot = Take-Shot $w $false
+        $script:LiveShotAt = Get-Date
+      }
+      if ($script:LiveShot) { Send $stream 200 'image/jpeg' $script:LiveShot; return }
+      Send-Text $stream 200 'application/json' ('{"why":' + (Json-Str $script:ShotWhy) + '}')
+      return
+    }
     '/fishinfo' {
       $r = Read-Shared $InfoFile
       if (-not $r) { Send-Text $stream 200 'application/json' '{}'; return }
@@ -1343,6 +1747,7 @@ function Handle-Client($client) {
     }
     '/helper' {
       if ($query -match '(^|&)afk=([01])') {
+        if (-not (Has-Key $headers)) { Send-Text $stream 403 'application/json' '{"error":"reload the page"}'; return }
         $script:Helper = $Matches[2] -eq '1'
         try { Set-Content -LiteralPath $HelperFile -Value $(if ($script:Helper) { 'on' } else { 'off' }) } catch {}
         $script:HelperNote = if ($script:Helper) { 'on - waiting until FischHub reports Roblox idle in the background' } else { 'off' }
