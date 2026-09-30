@@ -12,7 +12,7 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/j5cks/fischhub/main/f
 
 Running it again replaces the running copy, so reinjecting is safe.
 
-**Auto-execute:** save that line as a `.lua` file in Matcha's auto-execute folder. It only runs in Fisch, and it waits for the game to finish loading.
+**Auto-execute:** save that line as a `.lua` file in Matcha's auto-execute folder. It only runs in Fisch, and it waits for the game to finish loading. Or use the INSUI loader: put `loader.lua` from [j5cks/insui](https://github.com/j5cks/insui) in the auto-execute folder once, and switch scripts on or off in the gear tab > **Auto-execute**.
 
 ## Keys
 
@@ -38,11 +38,11 @@ Running it again replaces the running copy, so reinjecting is safe.
   - Each totem costs **500,000 C$**, and Auto Buy is off every time the script loads.
   - Set **Keep at least** so it never spends money you want to keep.
 - **Webhook:** posts your session stats to a Discord channel.
-  1. Paste the webhook URL into `workspace/FischHub/webhook.txt`.
+  1. Paste the webhook URL into `workspace/Fisch/FischHub/webhook.txt`.
   2. Press **Load URL from file**.
 - **Settings:** Anti-AFK, the dashboard feed, unloading the script, and the theme and other UI options (gear tab).
 
-Your settings save by themselves to Matcha's `workspace/FischHub` folder.
+Your settings save by themselves to Matcha's `workspace/Fisch/FischHub` folder (the menu's look goes to `workspace/INSUI/FischHub`). Updating from an older version copies your settings over from `workspace/FischHub` once; the old folder is left alone and can be deleted.
 
 **Menu:** `P` opens and closes it. The minimize button hides it completely, and `P` brings it back.
 
@@ -110,4 +110,4 @@ By default the webhook keeps editing **one** Discord message instead of posting 
 
 ## If Roblox or Fisch updates
 
-Instant Catch reads a few memory positions that can move after an update. They're saved in `workspace/FischHub/offsets.json` with the Roblox version they were checked on. After a Roblox update, the script checks them once, fixes any that moved, and saves them again. You don't need to do anything. The Debug tab shows the status, and **Recheck offsets** forces a new check.
+Instant Catch reads a few memory positions that can move after an update. They're saved in `workspace/Fisch/FischHub/offsets.json` with the Roblox version they were checked on. After a Roblox update, the script checks them once, fixes any that moved, and saves them again. You don't need to do anything. The Debug tab shows the status, and **Recheck offsets** forces a new check.

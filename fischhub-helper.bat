@@ -41,10 +41,15 @@ $StallSec = 120
 $Workspace = 'C:\matcha\workspace'
 if ($env:FH_ARG) {
   $a = $env:FH_ARG.TrimEnd('\')
-  if (Test-Path -LiteralPath (Join-Path $a 'FischHub')) { $Workspace = $a }
-  elseif ((Split-Path $a -Leaf) -eq 'FischHub') { $Workspace = Split-Path $a }
+  if ((Test-Path -LiteralPath (Join-Path $a 'Fisch\FischHub')) -or (Test-Path -LiteralPath (Join-Path $a 'FischHub'))) { $Workspace = $a }
+  elseif ((Split-Path $a -Leaf) -eq 'FischHub') {
+    $Workspace = Split-Path $a
+    if ((Split-Path $Workspace -Leaf) -eq 'Fisch') { $Workspace = Split-Path $Workspace }
+  }
 }
-$Dir = Join-Path $Workspace 'FischHub'
+# FischHub 2.3.3+ keeps its files in Fisch\FischHub; older builds used FischHub
+$Dir = Join-Path $Workspace 'Fisch\FischHub'
+if (-not (Test-Path -LiteralPath $Dir) -and (Test-Path -LiteralPath (Join-Path $Workspace 'FischHub'))) { $Dir = Join-Path $Workspace 'FischHub' }
 $StateFile = Join-Path $Dir 'dashboard\state.json'
 $CatchFile = Join-Path $Dir 'dashboard\catches.txt'
 $InfoFile = Join-Path $Dir 'fishinfo.json'
