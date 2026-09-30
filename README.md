@@ -7,12 +7,12 @@ A Fisch script for the **Matcha** executor.
 Join Fisch, then run this in Matcha:
 
 ```lua
-loadstring(game:HttpGet("https://raw.githubusercontent.com/j5cks/fischhub/main/fischhub.lua"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/adorablewhale/fischhub/main/fischhub.lua"))()
 ```
 
 Running it again replaces the running copy, so reinjecting is safe.
 
-**Auto-execute:** save that line as a `.lua` file in Matcha's auto-execute folder. It only runs in Fisch, and it waits for the game to finish loading. Or use the INSUI loader: put `loader.lua` from [j5cks/insui](https://github.com/j5cks/insui) in the auto-execute folder once, and switch scripts on or off in the gear tab > **Auto-execute**.
+**Auto-execute:** save that line as a `.lua` file in Matcha's auto-execute folder. It only runs in Fisch, and it waits for the game to finish loading. Or use the INSUI loader: put `loader.lua` from [adorablewhale/insui](https://github.com/adorablewhale/insui) in the auto-execute folder once, and switch scripts on or off in the gear tab > **Auto-execute**.
 
 ## Keys
 

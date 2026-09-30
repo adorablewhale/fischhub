@@ -1528,7 +1528,7 @@ function Send-Discord([string]$method, [string]$url, [string]$json, $img, [bool]
   $req = [System.Net.HttpWebRequest]::Create($url)
   $req.Method = $method
   $req.ContentType = $type
-  $req.UserAgent = 'FischHub-helper (https://github.com/j5cks/fischhub, 2)'
+  $req.UserAgent = 'FischHub-helper (https://github.com/adorablewhale/fischhub, 2)'
   $req.Timeout = 20000
   $req.ContentLength = $body.Length
   $rs = $req.GetRequestStream()
