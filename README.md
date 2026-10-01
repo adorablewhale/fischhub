@@ -15,12 +15,13 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/adorablewhale/fischhu
 ### features
 
 - **auto fish** — casts, shakes and reels on its own
-- **instant catch** — finishes the reel the moment a fish bites
+- **instant catch** — speeds up the reel after the game's intro
 - **live hud** — catches, losses, rod and runtime at a glance
 - **teleports** — every fishing spot, plus your own saved ones
 - **anti-afk** — stays in the server while you're away
 - **discord stats** — one message that keeps updating, plus disconnect alerts
 - **phone dashboard** — check and change settings from [adorablewhale.world](https://adorablewhale.world)
+- **fishing spot and rejoin** — return to your saved spot; the optional windows helper can relaunch roblox after a kick
 
 ### how to use
 
