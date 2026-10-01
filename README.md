@@ -16,8 +16,11 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/adorablewhale/fischhu
 
 - **auto fish** — casts, shakes and reels on its own
 - **instant catch** — speeds up the reel after the game's intro
+- **force non-perfect catch** — optional, independent of instant catch
+- **casting modes** — choose hybrid or cursor-based casting when hybrid access is available
 - **live hud** — catches, losses, rod and runtime at a glance
 - **teleports** — every fishing spot, plus your own saved ones
+- **totems** — use and restock totems, with optional shop and stand markers
 - **anti-afk** — stays in the server while you're away
 - **discord stats** — one message that keeps updating, plus disconnect alerts
 - **phone dashboard** — check and change settings from [adorablewhale.world](https://adorablewhale.world)
