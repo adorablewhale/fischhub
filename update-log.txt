@@ -1,0 +1,2 @@
+fischhub 2.6.2
+- offsets now say when they are waiting for the first reel.
