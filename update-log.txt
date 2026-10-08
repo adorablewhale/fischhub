@@ -1,3 +1,9 @@
+fischhub 2.7.1
+- boss fights (styx angler, olympian devil): new "boss fights" setting - survive keeps your health full until the fight is won, instant ends it right away. instant catch and the control bar no longer make you lose these fights.
+- aurora auto buy now notices stands that need merlin's quest (or a bestiary goal), saves them and moves on.
+- dashboard: new home tab with quick fixes (back to fishing spot, restart, stop everything, reset rod, rejoin...), quick settings, and a status line that says what's wrong. every setting has a short description.
+- discord: shorter stats card that leads with what's wrong.
+
 fischhub 2.7.0
 - new menu (insui 2.0): website look, live status in the title bar, world in the footer, counts next to tabs, descriptions under every option.
 - treasure has its own tab; sunken chests show a live count.
