@@ -1,2 +1,10 @@
+fischhub 2.7.0
+- new menu (insui 2.0): website look, live status in the title bar, world in the footer, counts next to tabs, descriptions under every option.
+- treasure has its own tab; sunken chests show a live count.
+- totem shop buying and aurora stands are one section.
+- teleports: every npc in its own searchable list.
+- the totems page no longer lags (inventory scans were running every frame).
+- bellona dual reels, aurora auto buy, auto appraise, treasure claims, reel speed, fish esp, teleport editor and rod teleports from the beta.
+
 fischhub 2.6.2
 - offsets now say when they are waiting for the first reel.
