@@ -1,3 +1,9 @@
+fischhub 2.7.2
+- loading is now served from adorablewhale.world after you accept the agreement and keep reporting on. the loadstring is the same one you already run.
+- a new version gives you 24 hours. after that an old loader stops and tells you to rerun the loadstring to get the current one.
+- diagnostics are off by default and you choose each one in settings: error reports, executor and roblox version, performance counters. the feedback box sends only what you type when you press send.
+- an account the owner blocked gets the reason written for it instead of the script.
+- live dashboard sync is every 15 seconds now (was 5), to keep the website calm.
 fischhub 2.7.1
 - boss fights (styx angler, olympian devil): new "boss fights" setting - survive keeps your health full until the fight is won, instant ends it right away. instant catch and the control bar no longer make you lose these fights.
 - aurora auto buy now notices stands that need merlin's quest (or a bestiary goal), saves them and moves on.
